@@ -12,6 +12,21 @@ services:
       gi-hsp-net:
         ipv4_address: 172.30.0.10
 
+  iot-client-1:
+    image: gi-hsp/iot-client:1.0
+    container_name: iot-client-1
+    restart: unless-stopped
+    environment:
+      CLIENT_ID: iot-client-1
+      MQTT_BROKER: mqtt-broker
+      MQTT_PORT: 1883
+      PUBLISH_INTERVAL: 5
+    depends_on:
+      - mqtt-broker
+    networks:
+      gi-hsp-net:
+        ipv4_address: 172.30.0.20
+
 networks:
   gi-hsp-net:
     external: true
