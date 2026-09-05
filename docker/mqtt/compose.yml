@@ -69,6 +69,16 @@ services:
       gi-hsp-net:
         ipv4_address: 172.30.0.30
 
+
+  hsp-attacker:
+    image: gi-hsp/hsp-attacker:0.1
+    container_name: hsp-attacker
+    restart: unless-stopped
+    networks:
+      gi-hsp-net:
+        ipv4_address: 172.30.0.40
+
+
 networks:
   gi-hsp-net:
     external: true
