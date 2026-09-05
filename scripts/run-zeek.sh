@@ -7,6 +7,7 @@ OUTPUT_DIR="$2"
 mkdir -p "$OUTPUT_DIR"
 
 docker run --rm \
+  --user "$(id -u):$(id -g)" \
   -v "$(realpath "$(dirname "$PCAP_FILE")"):/pcap:ro" \
   -v "$(realpath "$OUTPUT_DIR"):/output" \
   zeek/zeek:lts \
