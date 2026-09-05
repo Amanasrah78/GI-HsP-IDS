@@ -43,3 +43,7 @@ docker/mqtt/data/*
 !docker/mqtt/log/.gitkeep
 !docker/mqtt/data/.gitkeep
 
+
+# Packet captures
+capture/pcap/*
+!capture/pcap/.gitkeep
