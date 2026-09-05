@@ -17,6 +17,7 @@ CSV_FILE="results/processed/${EXPERIMENT_ID}.csv"
 MQTT_CSV_FILE="results/processed/${EXPERIMENT_ID}.mqtt_publish.csv"
 PACKET_CSV_FILE="results/processed/${EXPERIMENT_ID}.packets.csv"
 WINDOWS_FILE="results/processed/${EXPERIMENT_ID}.windows.jsonl"
+SEQUENCES_FILE="results/processed/${EXPERIMENT_ID}.sequences.jsonl"
 SUMMARY_FILE="results/processed/${EXPERIMENT_ID}.summary.json"
 GRAPH_FILE="graph/output/${EXPERIMENT_ID}.json"
 DYNAMIC_GRAPH_FILE="graph/output/${EXPERIMENT_ID}.dynamic.json"
@@ -30,6 +31,7 @@ if [ -e "$PCAP_FILE" ] \
     || [ -e "$MQTT_CSV_FILE" ] \
     || [ -e "$PACKET_CSV_FILE" ] \
     || [ -e "$WINDOWS_FILE" ] \
+    || [ -e "$SEQUENCES_FILE" ] \
     || [ -e "$SUMMARY_FILE" ] \
     || [ -e "$GRAPH_FILE" ] \
     || [ -e "$DYNAMIC_GRAPH_FILE" ] \
