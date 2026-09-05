@@ -13,6 +13,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from preprocessing.tshark_packets_to_csv import (
+    FIELDS as PACKET_FIELDS,
+)
 from preprocessing.build_training_sequences import (
     DEFAULT_SEQUENCE_LENGTH,
     DEFAULT_SEQUENCE_STRIDE,
@@ -21,6 +24,76 @@ from preprocessing.build_training_sequences import (
     validate_sequence_records,
     validate_window_records,
 )
+
+
+def validate_packet_rows(columns, rows):
+    required_columns = {
+        column
+        for _, column in PACKET_FIELDS
+    }
+    missing_columns = required_columns - set(columns)
+
+    if missing_columns:
+        raise ValueError(
+            "Packet CSV missing columns: "
+            + ", ".join(sorted(missing_columns))
+        )
+
+    if not rows:
+        raise ValueError(
+            "Packet CSV contains no data rows"
+        )
+
+    for row_number, row in enumerate(rows, 1):
+        try:
+            timestamp = float(row["ts"])
+            stream = int(row["tcp_stream"])
+            source_port = int(row["src_port"])
+            destination_port = int(row["dst_port"])
+            frame_length = int(row["frame_len"])
+            tcp_length = int(row["tcp_len"])
+            tcp_window = int(row["tcp_window"])
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"Packet row {row_number} has invalid numeric data"
+            ) from exc
+
+        if not math.isfinite(timestamp):
+            raise ValueError(
+                f"Packet row {row_number} has invalid timestamp"
+            )
+
+        if (
+            stream < 0
+            or not 1 <= source_port <= 65535
+            or not 1 <= destination_port <= 65535
+            or frame_length <= 0
+            or tcp_length < 0
+            or tcp_length > frame_length
+            or tcp_window < 0
+        ):
+            raise ValueError(
+                f"Packet row {row_number} has invalid bounds"
+            )
+
+        if (
+            not row["src_ip"]
+            or not row["dst_ip"]
+            or not row["tcp_flags"]
+        ):
+            raise ValueError(
+                f"Packet row {row_number} has missing fields"
+            )
+
+        for indicator in (
+            "retransmission",
+            "lost_segment",
+        ):
+            if row[indicator] not in ("", "1"):
+                raise ValueError(
+                    f"Packet row {row_number} has invalid "
+                    f"{indicator} indicator"
+                )
 
 
 def validate_training_windows(
@@ -415,6 +488,36 @@ def main():
 
         except (csv.Error, OSError) as exc:
             print(f"[FAIL] MQTT publish CSV invalid: {exc}")
+            ok = False
+
+    if packet_csv_path.exists():
+        try:
+            with packet_csv_path.open(
+                "r",
+                encoding="utf-8",
+                newline="",
+            ) as f:
+                reader = csv.DictReader(f)
+                packet_columns = reader.fieldnames or []
+                packet_rows = list(reader)
+
+            validate_packet_rows(
+                packet_columns,
+                packet_rows,
+            )
+            print(
+                f"[OK]   Packet CSV contains "
+                f"{len(packet_rows)} valid row(s)"
+            )
+
+        except (
+            csv.Error,
+            KeyError,
+            OSError,
+            TypeError,
+            ValueError,
+        ) as exc:
+            print(f"[FAIL] Packet CSV invalid: {exc}")
             ok = False
 
     if dynamic_graph_path.exists():

@@ -8,6 +8,7 @@ from preprocessing.build_training_sequences import (
     write_sequences,
 )
 from scripts.validate_experiment import (
+    validate_packet_rows,
     validate_training_sequences,
     validate_training_windows,
 )
@@ -64,6 +65,83 @@ def make_records(count=2):
         })
 
     return records
+
+
+def make_packet_row():
+    return {
+        "ts": "100.25",
+        "tcp_stream": "0",
+        "src_ip": "192.0.2.1",
+        "src_port": "40000",
+        "dst_ip": "192.0.2.2",
+        "dst_port": "1883",
+        "frame_len": "80",
+        "tcp_len": "14",
+        "tcp_flags": "0x0018",
+        "tcp_window": "512",
+        "retransmission": "",
+        "lost_segment": "",
+    }
+
+
+class ValidatePacketRowsTests(unittest.TestCase):
+    def test_accepts_valid_packet_rows(self):
+        row = make_packet_row()
+        validate_packet_rows(list(row), [row])
+
+    def test_rejects_missing_columns(self):
+        row = make_packet_row()
+        columns = [
+            column
+            for column in row
+            if column != "frame_len"
+        ]
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "missing columns",
+        ):
+            validate_packet_rows(columns, [row])
+
+    def test_rejects_empty_packet_csv(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            "no data rows",
+        ):
+            validate_packet_rows(
+                list(make_packet_row()),
+                [],
+            )
+
+    def test_rejects_nonfinite_timestamp(self):
+        row = make_packet_row()
+        row["ts"] = "nan"
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "timestamp",
+        ):
+            validate_packet_rows(list(row), [row])
+
+    def test_rejects_invalid_numeric_bounds(self):
+        row = make_packet_row()
+        row["tcp_len"] = "81"
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "bounds",
+        ):
+            validate_packet_rows(list(row), [row])
+
+    def test_rejects_invalid_analysis_indicator(self):
+        row = make_packet_row()
+        row["retransmission"] = "true"
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "retransmission",
+        ):
+            validate_packet_rows(list(row), [row])
 
 
 class ValidateTrainingWindowsTests(unittest.TestCase):
