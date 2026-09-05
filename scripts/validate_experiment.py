@@ -139,6 +139,9 @@ def main():
     mqtt_csv_path = Path(
         f"results/processed/{experiment_id}.mqtt_publish.csv"
     )
+    packet_csv_path = Path(
+        f"results/processed/{experiment_id}.packets.csv"
+    )
     summary_path = Path(
         f"results/processed/{experiment_id}.summary.json"
     )
@@ -161,6 +164,7 @@ def main():
         "zeek_conn": conn_path,
         "flow_csv": csv_path,
         "mqtt_publish_csv": mqtt_csv_path,
+        "packet_csv": packet_csv_path,
         "summary_json": summary_path,
         "graph_json": graph_path,
         "dynamic_graph_json": dynamic_graph_path,
@@ -724,6 +728,30 @@ def main():
                         )
                     )
                 ) if mqtt_csv_path.exists() else None,
+                "packet_count": sum(
+                    1
+                    for _ in csv.DictReader(
+                        packet_csv_path.open(
+                            "r",
+                            encoding="utf-8",
+                            newline="",
+                        )
+                    )
+                ) if packet_csv_path.exists() else None,
+                "training_window_count": sum(
+                    1
+                    for line in windows_path.read_text(
+                        encoding="utf-8"
+                    ).splitlines()
+                    if line.strip()
+                ) if windows_path.exists() else None,
+                "training_sequence_count": sum(
+                    1
+                    for line in sequences_path.read_text(
+                        encoding="utf-8"
+                    ).splitlines()
+                    if line.strip()
+                ) if sequences_path.exists() else 0,
                 "graph_node_count": None,
                 "graph_edge_count": None,
                 "dynamic_snapshot_count": None,
