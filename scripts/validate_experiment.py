@@ -26,10 +26,16 @@ def main():
     pcap_path = Path(f"capture/pcap/{experiment_id}.pcap")
     hash_path = Path(f"capture/pcap/{experiment_id}.sha256")
     csv_path = Path(f"results/processed/{experiment_id}.csv")
+    mqtt_csv_path = Path(
+        f"results/processed/{experiment_id}.mqtt_publish.csv"
+    )
     summary_path = Path(
         f"results/processed/{experiment_id}.summary.json"
     )
     graph_path = Path(f"graph/output/{experiment_id}.json")
+    dynamic_graph_path = Path(
+        f"graph/output/{experiment_id}.dynamic.json"
+    )
     conn_path = Path(f"results/raw/{experiment_id}/zeek/conn.log")
 
     required = {
@@ -38,8 +44,10 @@ def main():
         "sha256_sidecar": hash_path,
         "zeek_conn": conn_path,
         "flow_csv": csv_path,
+        "mqtt_publish_csv": mqtt_csv_path,
         "summary_json": summary_path,
         "graph_json": graph_path,
+        "dynamic_graph_json": dynamic_graph_path,
     }
 
     ok = True
@@ -182,6 +190,235 @@ def main():
 
         except (csv.Error, OSError) as exc:
             print(f"[FAIL] Flow CSV invalid: {exc}")
+            ok = False
+
+    if mqtt_csv_path.exists():
+        try:
+            required_mqtt_columns = {
+                "ts",
+                "uid",
+                "id.orig_h",
+                "id.orig_p",
+                "id.resp_h",
+                "id.resp_p",
+                "from_client",
+                "retain",
+                "qos",
+                "status",
+                "topic",
+                "payload_len",
+            }
+
+            with mqtt_csv_path.open(
+                "r",
+                encoding="utf-8",
+                newline="",
+            ) as f:
+                reader = csv.DictReader(f)
+
+                mqtt_columns = set(reader.fieldnames or [])
+                missing_mqtt_columns = (
+                    required_mqtt_columns - mqtt_columns
+                )
+
+                if not missing_mqtt_columns:
+                    print(
+                        "[OK]   MQTT publish CSV contains "
+                        "required columns"
+                    )
+                else:
+                    print(
+                        "[FAIL] MQTT publish CSV missing columns: "
+                        + ", ".join(
+                            sorted(missing_mqtt_columns)
+                        )
+                    )
+                    ok = False
+
+                mqtt_rows = list(reader)
+
+            if mqtt_rows:
+                print(
+                    f"[OK]   MQTT publish CSV contains "
+                    f"{len(mqtt_rows)} row(s)"
+                )
+            else:
+                print(
+                    "[FAIL] MQTT publish CSV contains no data rows"
+                )
+                ok = False
+
+            invalid_mqtt_rows = [
+                row
+                for row in mqtt_rows
+                if (
+                    not row.get("id.orig_h")
+                    or not row.get("id.resp_h")
+                    or row.get("from_client") not in {"T", "F"}
+                    or not row.get("topic")
+                )
+            ]
+
+            if not invalid_mqtt_rows:
+                print(
+                    "[OK]   All MQTT publish rows contain "
+                    "valid endpoints, direction, and topic"
+                )
+            else:
+                print(
+                    f"[FAIL] {len(invalid_mqtt_rows)} MQTT "
+                    "publish row(s) are semantically invalid"
+                )
+                ok = False
+
+            invalid_payload_lengths = []
+
+            for row in mqtt_rows:
+                try:
+                    if int(row["payload_len"]) < 0:
+                        invalid_payload_lengths.append(row)
+                except (TypeError, ValueError):
+                    invalid_payload_lengths.append(row)
+
+            if not invalid_payload_lengths:
+                print(
+                    "[OK]   All MQTT payload lengths are "
+                    "valid non-negative integers"
+                )
+            else:
+                print(
+                    f"[FAIL] {len(invalid_payload_lengths)} MQTT "
+                    "row(s) have invalid payload lengths"
+                )
+                ok = False
+
+        except (csv.Error, OSError) as exc:
+            print(f"[FAIL] MQTT publish CSV invalid: {exc}")
+            ok = False
+
+    if dynamic_graph_path.exists():
+        try:
+            with dynamic_graph_path.open(
+                "r",
+                encoding="utf-8",
+            ) as f:
+                dynamic_graph = json.load(f)
+
+            window_seconds = dynamic_graph.get(
+                "window_seconds"
+            )
+            snapshots = dynamic_graph.get("snapshots")
+            snapshot_count = dynamic_graph.get(
+                "snapshot_count"
+            )
+
+            if (
+                isinstance(window_seconds, (int, float))
+                and window_seconds > 0
+            ):
+                print(
+                    "[OK]   Dynamic graph has valid "
+                    "window size"
+                )
+            else:
+                print(
+                    "[FAIL] Dynamic graph window size "
+                    "is invalid"
+                )
+                ok = False
+
+            if isinstance(snapshots, list) and snapshots:
+                print(
+                    f"[OK]   Dynamic graph contains "
+                    f"{len(snapshots)} snapshot(s)"
+                )
+            else:
+                print(
+                    "[FAIL] Dynamic graph contains no "
+                    "snapshots"
+                )
+                snapshots = []
+                ok = False
+
+            if snapshot_count == len(snapshots):
+                print(
+                    "[OK]   Dynamic graph snapshot count "
+                    "matches snapshot list"
+                )
+            else:
+                print(
+                    "[FAIL] Dynamic graph snapshot count "
+                    "mismatch"
+                )
+                ok = False
+
+            invalid_snapshots = 0
+
+            for snapshot in snapshots:
+                nodes = snapshot.get("nodes")
+                edges = snapshot.get("edges")
+
+                if (
+                    not isinstance(nodes, list)
+                    or not isinstance(edges, list)
+                ):
+                    invalid_snapshots += 1
+                    continue
+
+                node_ids = {
+                    node.get("id")
+                    for node in nodes
+                    if (
+                        isinstance(node, dict)
+                        and node.get("id") is not None
+                    )
+                }
+
+                for edge in edges:
+                    if (
+                        not isinstance(edge, dict)
+                        or edge.get("source") not in node_ids
+                        or edge.get("target") not in node_ids
+                    ):
+                        invalid_snapshots += 1
+                        break
+
+                    if (
+                        not isinstance(
+                            edge.get("event_count"),
+                            int,
+                        )
+                        or edge["event_count"] <= 0
+                    ):
+                        invalid_snapshots += 1
+                        break
+
+                    if (
+                        not isinstance(
+                            edge.get("payload_bytes"),
+                            int,
+                        )
+                        or edge["payload_bytes"] < 0
+                    ):
+                        invalid_snapshots += 1
+                        break
+
+            if invalid_snapshots == 0:
+                print(
+                    "[OK]   All dynamic graph snapshots "
+                    "contain valid nodes and edges"
+                )
+            else:
+                print(
+                    f"[FAIL] {invalid_snapshots} dynamic "
+                    "snapshot(s) are semantically invalid"
+                )
+                ok = False
+
+        except (json.JSONDecodeError, OSError) as exc:
+            print(
+                f"[FAIL] Dynamic graph JSON invalid: {exc}"
+            )
             ok = False
 
     if summary_path.exists():
