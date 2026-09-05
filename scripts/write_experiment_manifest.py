@@ -47,21 +47,35 @@ def main():
             "capture_interface": "br-c73cfc820324",
         },
         "services": {
-            "mqtt_broker": {
+            "mqtt_broker_1": {
                 "container": "mqtt-broker",
                 "ip": "172.30.0.10",
                 "port": 1883,
-            }
+            },
+            "mqtt_broker_2": {
+                "container": "mqtt-broker-2",
+                "ip": "172.30.0.11",
+                "port": 1883,
+            },
+        },
+        "mqtt_bridge": {
+            "source_broker": "mqtt-broker-2",
+            "destination_broker": "mqtt-broker",
+            "topic": "iot/#",
+            "direction": "out",
+            "qos": 0,
         },
         "clients": [
             {
                 "container": "iot-client-1",
                 "ip": "172.30.0.20",
+                "broker": "mqtt-broker",
                 "publish_interval_seconds": 5,
             },
             {
                 "container": "iot-client-2",
                 "ip": "172.30.0.21",
+                "broker": "mqtt-broker-2",
                 "publish_interval_seconds": 7,
             },
         ],

@@ -12,6 +12,16 @@ services:
       gi-hsp-net:
         ipv4_address: 172.30.0.10
 
+  mqtt-broker-2:
+    image: eclipse-mosquitto:2
+    container_name: mqtt-broker-2
+    restart: unless-stopped
+    volumes:
+      - ./config-broker-2/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    networks:
+      gi-hsp-net:
+        ipv4_address: 172.30.0.11
+
   iot-client-1:
     image: gi-hsp/iot-client:1.0
     container_name: iot-client-1
@@ -33,11 +43,11 @@ services:
     restart: unless-stopped
     environment:
       CLIENT_ID: iot-client-2
-      MQTT_BROKER: mqtt-broker
+      MQTT_BROKER: mqtt-broker-2
       MQTT_PORT: 1883
       PUBLISH_INTERVAL: 7
     depends_on:
-      - mqtt-broker
+      - mqtt-broker-2
     networks:
       gi-hsp-net:
         ipv4_address: 172.30.0.21
