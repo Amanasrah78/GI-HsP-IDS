@@ -1,0 +1,56 @@
+[
+    {
+        "Name": "gi-hsp-net",
+        "Id": "c73cfc8203241e455820263023664b0e85b7bad0712cd68d57d641fcc2fbe5fb",
+        "Created": "2026-09-05T01:11:43.355831198Z",
+        "Scope": "local",
+        "Driver": "bridge",
+        "EnableIPv4": true,
+        "EnableIPv6": false,
+        "IPAM": {
+            "Driver": "default",
+            "Options": {},
+            "Config": [
+                {
+                    "Subnet": "172.30.0.0/24",
+                    "Gateway": "172.30.0.1"
+                }
+            ]
+        },
+        "Internal": false,
+        "Attachable": false,
+        "Ingress": false,
+        "ConfigFrom": {
+            "Network": ""
+        },
+        "ConfigOnly": false,
+        "Options": {},
+        "Labels": {},
+        "Containers": {
+            "47d10c8d865efbc57c96a762e01e3b7393c224093c261a18e217e5c6e48d4b76": {
+                "Name": "node-b",
+                "EndpointID": "f2ce6c2c7171e56156419d4e24cb9cf9b30653dc42f76db06c40bc425d54adfc",
+                "MacAddress": "ce:f1:b7:72:dc:0e",
+                "IPv4Address": "172.30.0.3/24",
+                "IPv6Address": ""
+            },
+            "5346c23fefdd628d08913dbb8f9da7778d1db18f39ca9c34ef51b8b8da1cb0b4": {
+                "Name": "node-a",
+                "EndpointID": "545c7c11c8a503b24a2b0f768508a2dc036ff328cba3102200eb3310643373ce",
+                "MacAddress": "de:c6:35:08:22:7f",
+                "IPv4Address": "172.30.0.2/24",
+                "IPv6Address": ""
+            }
+        },
+        "Status": {
+            "IPAM": {
+                "Subnets": {
+                    "172.30.0.0/24": {
+                        "IPsInUse": 5,
+                        "DynamicIPsAvailable": 251
+                    }
+                }
+            }
+        }
+    }
+]
