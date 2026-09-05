@@ -438,8 +438,19 @@ def main():
                         )
                     )
                 ) if csv_path.exists() else None,
+                "mqtt_publish_event_count": sum(
+                    1
+                    for _ in csv.DictReader(
+                        mqtt_csv_path.open(
+                            "r",
+                            encoding="utf-8",
+                            newline="",
+                        )
+                    )
+                ) if mqtt_csv_path.exists() else None,
                 "graph_node_count": None,
                 "graph_edge_count": None,
+                "dynamic_snapshot_count": None,
                 "pcap_bytes": pcap_path.stat().st_size
                 if pcap_path.exists()
                 else None,
@@ -454,6 +465,17 @@ def main():
                 )
                 expected_summary["graph_edge_count"] = len(
                     graph_for_summary.get("edges", [])
+                )
+
+            if dynamic_graph_path.exists():
+                with dynamic_graph_path.open(
+                    "r",
+                    encoding="utf-8",
+                ) as f:
+                    dynamic_for_summary = json.load(f)
+
+                expected_summary["dynamic_snapshot_count"] = (
+                    dynamic_for_summary.get("snapshot_count")
                 )
 
             mismatches = [
