@@ -11,6 +11,71 @@ def load_yaml(path: Path):
         return yaml.safe_load(f)
 
 
+
+def summarize_packet_window(packet_rows):
+    packet_count = len(packet_rows)
+
+    frame_lengths = [
+        int(row["frame_len"] or 0)
+        for row in packet_rows
+    ]
+    tcp_payload_lengths = [
+        int(row["tcp_len"] or 0)
+        for row in packet_rows
+    ]
+    timestamps = sorted(
+        float(row["ts"])
+        for row in packet_rows
+    )
+
+    interarrivals = [
+        current - previous
+        for previous, current in zip(
+            timestamps,
+            timestamps[1:],
+        )
+    ]
+
+    def mean(values):
+        if not values:
+            return 0.0
+        return sum(values) / len(values)
+
+    mean_interarrival = mean(interarrivals)
+
+    if interarrivals:
+        interarrival_variance = mean([
+            (value - mean_interarrival) ** 2
+            for value in interarrivals
+        ])
+        std_interarrival = interarrival_variance ** 0.5
+        max_interarrival = max(interarrivals)
+    else:
+        std_interarrival = 0.0
+        max_interarrival = 0.0
+
+    return {
+        "packet_count": packet_count,
+        "frame_bytes": sum(frame_lengths),
+        "tcp_payload_bytes": sum(tcp_payload_lengths),
+        "mean_frame_len": mean(frame_lengths),
+        "mean_tcp_payload_len": mean(
+            tcp_payload_lengths
+        ),
+        "mean_interarrival_seconds": mean_interarrival,
+        "std_interarrival_seconds": std_interarrival,
+        "max_interarrival_seconds": max_interarrival,
+        "retransmission_count": sum(
+            bool(row["retransmission"])
+            for row in packet_rows
+        ),
+        "lost_segment_count": sum(
+            bool(row["lost_segment"])
+            for row in packet_rows
+        ),
+    }
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("experiment_id")
@@ -89,6 +154,11 @@ def main():
 
         packets_by_window[window_index].append(row)
 
+    packet_features_by_window = [
+        summarize_packet_window(rows)
+        for rows in packets_by_window
+    ]
+
     print("experiment_id:", experiment_id)
     print("label:", manifest["label"])
     print("flow_rows:", len(flow_rows))
@@ -97,6 +167,10 @@ def main():
     print(
         "packets_per_window:",
         [len(rows) for rows in packets_by_window],
+    )
+    print(
+        "packet_features_by_window:",
+        packet_features_by_window,
     )
     print(
         "numeric_features:",
