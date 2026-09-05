@@ -79,6 +79,43 @@ def main():
         print("[FAIL] Experiment ID mismatch")
         ok = False
 
+    if conn_path.exists():
+        try:
+            lines = conn_path.read_text(
+                encoding="utf-8"
+            ).splitlines()
+
+            if any(line.startswith("#path") and "conn" in line for line in lines):
+                print("[OK]   Zeek log identifies conn path")
+            else:
+                print("[FAIL] Zeek conn.log missing #path conn")
+                ok = False
+
+            if any(line.startswith("#fields") for line in lines):
+                print("[OK]   Zeek log contains field declaration")
+            else:
+                print("[FAIL] Zeek conn.log missing #fields")
+                ok = False
+
+            data_rows = [
+                line
+                for line in lines
+                if line and not line.startswith("#")
+            ]
+
+            if data_rows:
+                print(
+                    f"[OK]   Zeek conn.log contains "
+                    f"{len(data_rows)} data row(s)"
+                )
+            else:
+                print("[FAIL] Zeek conn.log contains no data rows")
+                ok = False
+
+        except OSError as exc:
+            print(f"[FAIL] Zeek conn.log invalid: {exc}")
+            ok = False
+
     if csv_path.exists():
         try:
             required_columns = {
