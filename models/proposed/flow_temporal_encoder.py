@@ -50,6 +50,7 @@ class FlowTemporalEncoder(nn.Module):
         self.encoder = nn.TransformerEncoder(
             encoder_layer,
             num_layers=num_layers,
+            enable_nested_tensor=False,
         )
 
         self.output_norm = nn.LayerNorm(model_dim)
