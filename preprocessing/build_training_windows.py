@@ -76,6 +76,54 @@ def summarize_packet_window(packet_rows):
     }
 
 
+def validate_window_alignment(
+    graph_data,
+    packet_features_by_window,
+):
+    snapshots = graph_data["snapshots"]
+    snapshot_count = graph_data["snapshot_count"]
+    measurement_start_ts = graph_data[
+        "measurement_start_ts"
+    ]
+    window_seconds = graph_data["window_seconds"]
+
+    if len(snapshots) != snapshot_count:
+        raise ValueError(
+            "Graph snapshot count does not match "
+            "snapshot metadata"
+        )
+
+    if len(packet_features_by_window) != snapshot_count:
+        raise ValueError(
+            "Packet feature count does not match "
+            "graph snapshot count"
+        )
+
+    for expected_index, snapshot in enumerate(snapshots):
+        expected_start = (
+            measurement_start_ts
+            + expected_index * window_seconds
+        )
+        expected_end = expected_start + window_seconds
+
+        if snapshot["window_index"] != expected_index:
+            raise ValueError(
+                "Graph window indices are not contiguous"
+            )
+
+        if abs(snapshot["start_ts"] - expected_start) > 1e-9:
+            raise ValueError(
+                f"Unexpected start time for window "
+                f"{expected_index}"
+            )
+
+        if abs(snapshot["end_ts"] - expected_end) > 1e-9:
+            raise ValueError(
+                f"Unexpected end time for window "
+                f"{expected_index}"
+            )
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("experiment_id")
@@ -158,6 +206,11 @@ def main():
         summarize_packet_window(rows)
         for rows in packets_by_window
     ]
+
+    validate_window_alignment(
+        graph_data,
+        packet_features_by_window,
+    )
 
     print("experiment_id:", experiment_id)
     print("label:", manifest["label"])
