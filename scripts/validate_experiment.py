@@ -14,7 +14,11 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from preprocessing.build_training_sequences import (
+    DEFAULT_SEQUENCE_LENGTH,
+    DEFAULT_SEQUENCE_STRIDE,
+    load_sequence_records,
     load_window_records,
+    validate_sequence_records,
     validate_window_records,
 )
 
@@ -83,6 +87,36 @@ def validate_training_windows(
             )
 
 
+def validate_training_sequences(
+    sequences_path,
+    window_records,
+):
+    if len(window_records) >= DEFAULT_SEQUENCE_LENGTH:
+        if not sequences_path.exists():
+            raise ValueError(
+                "Training sequence JSONL is required but missing"
+            )
+
+        sequence_records = load_sequence_records(
+            sequences_path
+        )
+        validate_sequence_records(
+            sequence_records,
+            window_records,
+            sequence_length=DEFAULT_SEQUENCE_LENGTH,
+            stride=DEFAULT_SEQUENCE_STRIDE,
+        )
+        return True
+
+    if sequences_path.exists():
+        raise ValueError(
+            "Training sequence JSONL exists for an "
+            "insufficient window count"
+        )
+
+    return False
+
+
 def sha256_file(path: Path) -> str:
     h = hashlib.sha256()
     with path.open("rb") as f:
@@ -114,6 +148,9 @@ def main():
     )
     windows_path = Path(
         f"results/processed/{experiment_id}.windows.jsonl"
+    )
+    sequences_path = Path(
+        f"results/processed/{experiment_id}.sequences.jsonl"
     )
     conn_path = Path(f"results/raw/{experiment_id}/zeek/conn.log")
 
@@ -613,6 +650,36 @@ def main():
                         "[OK]   Training windows match manifest "
                         "and dynamic graph"
                     )
+
+                    try:
+                        sequences_generated = (
+                            validate_training_sequences(
+                                sequences_path,
+                                window_records,
+                            )
+                        )
+
+                        if sequences_generated:
+                            print(
+                                "[OK]   Training sequences match "
+                                "training windows"
+                            )
+                        else:
+                            print(
+                                "[OK]   Training sequences correctly "
+                                "omitted for short capture"
+                            )
+                    except (
+                        KeyError,
+                        OSError,
+                        TypeError,
+                        ValueError,
+                    ) as exc:
+                        print(
+                            f"[FAIL] Training sequences invalid: "
+                            f"{exc}"
+                        )
+                        ok = False
                 except (
                     KeyError,
                     OSError,

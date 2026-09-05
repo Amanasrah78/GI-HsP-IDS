@@ -7,7 +7,9 @@ from pathlib import Path
 from preprocessing.build_training_sequences import (
     build_sequences,
     default_output_path,
+    load_sequence_records,
     load_window_records,
+    validate_sequence_records,
     validate_window_records,
     write_sequences,
 )
@@ -267,6 +269,73 @@ class SequenceOutputTests(unittest.TestCase):
             self.assertEqual(parsed, sequences)
             self.assertFalse(
                 Path(str(output_path) + ".tmp").exists()
+            )
+
+
+class ValidateSequenceRecordsTests(unittest.TestCase):
+    def test_loads_sequence_jsonl(self):
+        records = [make_record(index) for index in range(2)]
+        sequences = build_sequences(
+            records,
+            sequence_length=2,
+            stride=1,
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "sequences.jsonl"
+            write_sequences(path, sequences)
+
+            self.assertEqual(
+                load_sequence_records(path),
+                sequences,
+            )
+
+    def test_rejects_empty_sequence_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "sequences.jsonl"
+            path.write_text("", encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "no records",
+            ):
+                load_sequence_records(path)
+
+    def test_accepts_exact_regeneration(self):
+        records = [make_record(index) for index in range(4)]
+        sequences = build_sequences(
+            records,
+            sequence_length=3,
+            stride=1,
+        )
+
+        validate_sequence_records(
+            sequences,
+            records,
+            sequence_length=3,
+            stride=1,
+        )
+
+    def test_rejects_modified_sequence(self):
+        records = [make_record(index) for index in range(3)]
+        sequences = build_sequences(
+            records,
+            sequence_length=2,
+            stride=1,
+        )
+        sequences[0]["steps"][0]["packet_features"][
+            "packet_count"
+        ] = 999
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "do not match",
+        ):
+            validate_sequence_records(
+                sequences,
+                records,
+                sequence_length=2,
+                stride=1,
             )
 
 

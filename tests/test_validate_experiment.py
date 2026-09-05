@@ -1,7 +1,14 @@
 import copy
+import tempfile
 import unittest
+from pathlib import Path
 
+from preprocessing.build_training_sequences import (
+    build_sequences,
+    write_sequences,
+)
 from scripts.validate_experiment import (
+    validate_training_sequences,
     validate_training_windows,
 )
 
@@ -35,10 +42,10 @@ def make_dynamic_graph():
     }
 
 
-def make_records():
+def make_records(count=2):
     records = []
 
-    for index in range(2):
+    for index in range(count):
         start = 100.0 + index * 5.0
         records.append({
             "schema_version": 1,
@@ -140,6 +147,81 @@ class ValidateTrainingWindowsTests(unittest.TestCase):
                 LABEL,
                 make_dynamic_graph(),
             )
+
+
+class ValidateTrainingSequencesTests(unittest.TestCase):
+    def test_accepts_absent_sequences_for_short_capture(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "sequences.jsonl"
+
+            self.assertFalse(
+                validate_training_sequences(
+                    path,
+                    make_records(),
+                )
+            )
+
+    def test_rejects_stale_sequences_for_short_capture(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "sequences.jsonl"
+            path.write_text("{}\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "insufficient window count",
+            ):
+                validate_training_sequences(
+                    path,
+                    make_records(),
+                )
+
+    def test_rejects_missing_sequences_when_required(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "sequences.jsonl"
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "required but missing",
+            ):
+                validate_training_sequences(
+                    path,
+                    make_records(10),
+                )
+
+    def test_accepts_exact_production_sequences(self):
+        records = make_records(11)
+        sequences = build_sequences(
+            records,
+            sequence_length=10,
+            stride=1,
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "sequences.jsonl"
+            write_sequences(path, sequences)
+
+            self.assertTrue(
+                validate_training_sequences(
+                    path,
+                    records,
+                )
+            )
+
+    def test_rejects_mismatched_production_sequences(self):
+        records = make_records(10)
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "sequences.jsonl"
+            path.write_text("{}\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "do not match",
+            ):
+                validate_training_sequences(
+                    path,
+                    records,
+                )
 
 
 if __name__ == "__main__":

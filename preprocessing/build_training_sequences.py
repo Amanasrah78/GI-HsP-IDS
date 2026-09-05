@@ -1,9 +1,12 @@
 import argparse
+import copy
 import json
 from pathlib import Path
 
 
 SUPPORTED_SCHEMA_VERSION = 1
+DEFAULT_SEQUENCE_LENGTH = 10
+DEFAULT_SEQUENCE_STRIDE = 1
 
 
 def load_window_records(input_path):
@@ -140,17 +143,63 @@ def build_sequences(
                     "window_index": record["window_index"],
                     "start_ts": record["start_ts"],
                     "end_ts": record["end_ts"],
-                    "packet_features": record[
-                        "packet_features"
-                    ],
-                    "graph": record["graph"],
+                    "packet_features": copy.deepcopy(
+                        record["packet_features"]
+                    ),
+                    "graph": copy.deepcopy(
+                        record["graph"]
+                    ),
                 }
                 for record in window_slice
             ],
-            "label": first["label"],
+            "label": copy.deepcopy(first["label"]),
         })
 
     return sequences
+
+
+def load_sequence_records(input_path):
+    records = []
+
+    with input_path.open(
+        "r",
+        encoding="utf-8",
+    ) as f:
+        for line_number, line in enumerate(f, 1):
+            if not line.strip():
+                continue
+
+            try:
+                records.append(json.loads(line))
+            except json.JSONDecodeError as error:
+                raise ValueError(
+                    f"Invalid JSON on line {line_number}"
+                ) from error
+
+    if not records:
+        raise ValueError(
+            "Sequence file contains no records"
+        )
+
+    return records
+
+
+def validate_sequence_records(
+    sequence_records,
+    window_records,
+    sequence_length,
+    stride,
+):
+    expected = build_sequences(
+        window_records,
+        sequence_length=sequence_length,
+        stride=stride,
+    )
+
+    if sequence_records != expected:
+        raise ValueError(
+            "Sequence records do not match training windows"
+        )
 
 
 def default_output_path(input_path):
@@ -196,12 +245,12 @@ def main():
     parser.add_argument(
         "--sequence-length",
         type=int,
-        default=10,
+        default=DEFAULT_SEQUENCE_LENGTH,
     )
     parser.add_argument(
         "--stride",
         type=int,
-        default=1,
+        default=DEFAULT_SEQUENCE_STRIDE,
     )
     args = parser.parse_args()
 
