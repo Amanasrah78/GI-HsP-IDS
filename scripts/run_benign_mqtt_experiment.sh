@@ -7,7 +7,7 @@ if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
 fi
 
 EXPERIMENT_ID="$1"
-DURATION="${2:-30}"
+DURATION="${2:-60}"
 
 PCAP_FILE="capture/pcap/${EXPERIMENT_ID}.pcap"
 HASH_FILE="capture/pcap/${EXPERIMENT_ID}.sha256"
