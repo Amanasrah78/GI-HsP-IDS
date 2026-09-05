@@ -1,4 +1,5 @@
 import csv
+import json
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -48,17 +49,43 @@ def build_graph(csv_path: Path):
     return nodes, edges
 
 
+def graph_to_dict(nodes, edges):
+    return {
+        "nodes": [
+            {"id": node}
+            for node in sorted(nodes)
+        ],
+        "edges": [
+            {
+                "source": src,
+                "target": dst,
+                **attrs,
+            }
+            for (src, dst), attrs in sorted(edges.items())
+        ],
+    }
+
+
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python3 graph/build_graph.py <flows.csv>")
+    if len(sys.argv) not in (2, 3):
+        print(
+            "Usage: python3 graph/build_graph.py "
+            "<flows.csv> [output.json]"
+        )
         sys.exit(1)
 
-    nodes, edges = build_graph(Path(sys.argv[1]))
+    csv_path = Path(sys.argv[1])
 
-    print("Nodes:")
-    for node in sorted(nodes):
-        print(f"  {node}")
+    nodes, edges = build_graph(csv_path)
+    graph = graph_to_dict(nodes, edges)
 
-    print("\nEdges:")
-    for (src, dst), attrs in sorted(edges.items()):
-        print(f"  {src} -> {dst}: {attrs}")
+    print(json.dumps(graph, indent=2))
+
+    if len(sys.argv) == 3:
+        output_path = Path(sys.argv[2])
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with output_path.open("w", encoding="utf-8") as f:
+            json.dump(graph, f, indent=2)
+
+        print(f"\nWrote graph to {output_path}")

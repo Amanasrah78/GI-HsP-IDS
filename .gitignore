@@ -47,3 +47,7 @@ docker/mqtt/data/*
 # Packet captures
 capture/pcap/*
 !capture/pcap/.gitkeep
+
+# Generated graph artifacts
+graph/output/*
+!graph/output/.gitkeep
