@@ -88,6 +88,32 @@ def main():
                 "rev-parse",
                 "HEAD",
             ]),
+            "images": {
+                "mosquitto": run_command([
+                    "docker",
+                    "image",
+                    "inspect",
+                    "eclipse-mosquitto:2",
+                    "--format",
+                    "{{.Id}}",
+                ]),
+                "iot_client": run_command([
+                    "docker",
+                    "image",
+                    "inspect",
+                    "gi-hsp/iot-client:1.0",
+                    "--format",
+                    "{{.Id}}",
+                ]),
+                "zeek": run_command([
+                    "docker",
+                    "image",
+                    "inspect",
+                    "zeek/zeek:lts",
+                    "--format",
+                    "{{.Id}}",
+                ]),
+            },
         },
     }
 
