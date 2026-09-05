@@ -194,7 +194,9 @@ def build_window_records(
         packet_features_by_window,
     ):
         records.append({
+            "schema_version": 1,
             "experiment_id": experiment_id,
+            "window_seconds": graph_data["window_seconds"],
             "window_index": snapshot["window_index"],
             "start_ts": snapshot["start_ts"],
             "end_ts": snapshot["end_ts"],

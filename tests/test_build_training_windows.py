@@ -253,6 +253,7 @@ class EncodeGraphSnapshotTests(unittest.TestCase):
 class WindowRecordSerializationTests(unittest.TestCase):
     def setUp(self):
         self.graph_data = {
+            "window_seconds": 5.0,
             "snapshots": [{
                 "window_index": 0,
                 "start_ts": 100.0,
@@ -282,7 +283,9 @@ class WindowRecordSerializationTests(unittest.TestCase):
         self.assertEqual(
             set(records[0]),
             {
+                "schema_version",
                 "experiment_id",
+                "window_seconds",
                 "window_index",
                 "start_ts",
                 "end_ts",
@@ -291,6 +294,8 @@ class WindowRecordSerializationTests(unittest.TestCase):
                 "label",
             },
         )
+        self.assertEqual(records[0]["schema_version"], 1)
+        self.assertEqual(records[0]["window_seconds"], 5.0)
         self.assertEqual(records[0]["graph"], {
             "node_count": 1,
             "active_node_indices": [0],
