@@ -5,8 +5,11 @@ import unittest
 from pathlib import Path
 
 from preprocessing.build_training_sequences import (
+    build_sequences,
+    default_output_path,
     load_window_records,
     validate_window_records,
+    write_sequences,
 )
 
 
@@ -119,6 +122,152 @@ class ValidateWindowRecordsTests(unittest.TestCase):
             with self.subTest(name=name):
                 with self.assertRaises(ValueError):
                     validate_window_records(records)
+
+
+class BuildSequencesTests(unittest.TestCase):
+    def test_builds_overlapping_unpadded_sequences(self):
+        records = [
+            make_record(index)
+            for index in range(5)
+        ]
+
+        sequences = build_sequences(
+            records,
+            sequence_length=3,
+            stride=1,
+        )
+
+        self.assertEqual(len(sequences), 3)
+        self.assertEqual(
+            [
+                sequence["start_window_index"]
+                for sequence in sequences
+            ],
+            [0, 1, 2],
+        )
+        self.assertEqual(
+            [
+                sequence["end_window_index"]
+                for sequence in sequences
+            ],
+            [2, 3, 4],
+        )
+        self.assertEqual(
+            [
+                sequence["sequence_index"]
+                for sequence in sequences
+            ],
+            [0, 1, 2],
+        )
+        self.assertTrue(
+            all(
+                len(sequence["steps"]) == 3
+                for sequence in sequences
+            )
+        )
+        self.assertTrue(
+            all(
+                "label" not in step
+                for sequence in sequences
+                for step in sequence["steps"]
+            )
+        )
+
+    def test_respects_stride(self):
+        records = [
+            make_record(index)
+            for index in range(5)
+        ]
+
+        sequences = build_sequences(
+            records,
+            sequence_length=2,
+            stride=2,
+        )
+
+        self.assertEqual(
+            [
+                sequence["start_window_index"]
+                for sequence in sequences
+            ],
+            [0, 2],
+        )
+
+    def test_rejects_invalid_parameters(self):
+        records = [
+            make_record(0),
+            make_record(1),
+        ]
+
+        cases = [
+            {
+                "sequence_length": 0,
+                "stride": 1,
+            },
+            {
+                "sequence_length": 1,
+                "stride": 0,
+            },
+            {
+                "sequence_length": 3,
+                "stride": 1,
+            },
+        ]
+
+        for parameters in cases:
+            with self.subTest(parameters=parameters):
+                with self.assertRaises(ValueError):
+                    build_sequences(
+                        records,
+                        **parameters,
+                    )
+
+
+class SequenceOutputTests(unittest.TestCase):
+    def test_derives_default_output_path(self):
+        input_path = Path(
+            "results/processed/"
+            "experiment-a.windows.jsonl"
+        )
+
+        self.assertEqual(
+            default_output_path(input_path),
+            Path(
+                "results/processed/"
+                "experiment-a.sequences.jsonl"
+            ),
+        )
+
+    def test_writes_sequences_atomically(self):
+        records = [
+            make_record(0),
+            make_record(1),
+        ]
+        sequences = build_sequences(
+            records,
+            sequence_length=2,
+            stride=1,
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            output_path = (
+                Path(directory) / "sequences.jsonl"
+            )
+
+            write_sequences(
+                output_path,
+                sequences,
+            )
+
+            parsed = [
+                json.loads(line)
+                for line in output_path.read_text().splitlines()
+            ]
+
+            self.assertEqual(parsed, sequences)
+            self.assertFalse(
+                Path(str(output_path) + ".tmp").exists()
+            )
 
 
 if __name__ == "__main__":

@@ -91,18 +91,145 @@ def validate_window_records(records):
         previous_end = record["end_ts"]
 
 
+def build_sequences(
+    records,
+    sequence_length,
+    stride,
+):
+    if sequence_length <= 0:
+        raise ValueError("sequence_length must be > 0")
+
+    if stride <= 0:
+        raise ValueError("stride must be > 0")
+
+    validate_window_records(records)
+
+    if len(records) < sequence_length:
+        raise ValueError(
+            "Insufficient windows for one unpadded sequence"
+        )
+
+    sequences = []
+
+    for start in range(
+        0,
+        len(records) - sequence_length + 1,
+        stride,
+    ):
+        window_slice = records[
+            start:start + sequence_length
+        ]
+        first = window_slice[0]
+        last = window_slice[-1]
+
+        sequences.append({
+            "schema_version": 1,
+            "window_schema_version": first[
+                "schema_version"
+            ],
+            "experiment_id": first["experiment_id"],
+            "window_seconds": first["window_seconds"],
+            "sequence_index": len(sequences),
+            "sequence_length": sequence_length,
+            "start_window_index": first["window_index"],
+            "end_window_index": last["window_index"],
+            "start_ts": first["start_ts"],
+            "end_ts": last["end_ts"],
+            "steps": [
+                {
+                    "window_index": record["window_index"],
+                    "start_ts": record["start_ts"],
+                    "end_ts": record["end_ts"],
+                    "packet_features": record[
+                        "packet_features"
+                    ],
+                    "graph": record["graph"],
+                }
+                for record in window_slice
+            ],
+            "label": first["label"],
+        })
+
+    return sequences
+
+
+def default_output_path(input_path):
+    suffix = ".windows.jsonl"
+    name = input_path.name
+
+    if name.endswith(suffix):
+        name = name[:-len(suffix)]
+
+    return input_path.with_name(
+        name + ".sequences.jsonl"
+    )
+
+
+def write_sequences(output_path, sequences):
+    output_path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    temporary_path = output_path.with_name(
+        output_path.name + ".tmp"
+    )
+
+    with temporary_path.open(
+        "w",
+        encoding="utf-8",
+    ) as f:
+        for sequence in sequences:
+            json.dump(
+                sequence,
+                f,
+                sort_keys=True,
+            )
+            f.write("\n")
+
+    temporary_path.replace(output_path)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("input_jsonl")
+    parser.add_argument("--output")
+    parser.add_argument(
+        "--sequence-length",
+        type=int,
+        default=10,
+    )
+    parser.add_argument(
+        "--stride",
+        type=int,
+        default=1,
+    )
     args = parser.parse_args()
 
     input_path = Path(args.input_jsonl)
+    output_path = (
+        Path(args.output)
+        if args.output
+        else default_output_path(input_path)
+    )
+
     records = load_window_records(input_path)
-    validate_window_records(records)
+    sequences = build_sequences(
+        records,
+        sequence_length=args.sequence_length,
+        stride=args.stride,
+    )
+    write_sequences(
+        output_path,
+        sequences,
+    )
 
     print("experiment_id:", records[0]["experiment_id"])
     print("window_count:", len(records))
     print("window_seconds:", records[0]["window_seconds"])
+    print("sequence_count:", len(sequences))
+    print("sequence_length:", args.sequence_length)
+    print("stride:", args.stride)
+    print("output_path:", output_path)
 
 
 if __name__ == "__main__":
