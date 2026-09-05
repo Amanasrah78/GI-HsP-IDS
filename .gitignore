@@ -51,3 +51,5 @@ capture/pcap/*
 # Generated graph artifacts
 graph/output/*
 !graph/output/.gitkeep
+
+docs/mftst.pdf
