@@ -22,6 +22,7 @@ def main():
 
     manifest_path = Path(f"experiments/{experiment_id}.yaml")
     pcap_path = Path(f"capture/pcap/{experiment_id}.pcap")
+    hash_path = Path(f"capture/pcap/{experiment_id}.sha256")
     csv_path = Path(f"results/processed/{experiment_id}.csv")
     graph_path = Path(f"graph/output/{experiment_id}.json")
     conn_path = Path(f"results/raw/{experiment_id}/zeek/conn.log")
@@ -29,6 +30,7 @@ def main():
     required = {
         "manifest": manifest_path,
         "pcap": pcap_path,
+        "sha256_sidecar": hash_path,
         "zeek_conn": conn_path,
         "flow_csv": csv_path,
         "graph_json": graph_path,
@@ -49,14 +51,25 @@ def main():
     with manifest_path.open("r", encoding="utf-8") as f:
         manifest = yaml.safe_load(f)
 
-    expected_hash = manifest["capture"]["sha256"]
     actual_hash = sha256_file(pcap_path)
+    manifest_hash = manifest["capture"]["sha256"]
 
-    if expected_hash == actual_hash:
+    if manifest_hash == actual_hash:
         print("[OK]   PCAP SHA-256 matches manifest")
     else:
-        print("[FAIL] PCAP SHA-256 mismatch")
+        print("[FAIL] PCAP SHA-256 mismatch with manifest")
         ok = False
+
+    if hash_path.exists():
+        sidecar_hash = hash_path.read_text(
+            encoding="utf-8"
+        ).split()[0]
+
+        if sidecar_hash == actual_hash:
+            print("[OK]   PCAP SHA-256 matches sidecar")
+        else:
+            print("[FAIL] PCAP SHA-256 mismatch with sidecar")
+            ok = False
 
     if manifest["experiment_id"] == experiment_id:
         print("[OK]   Experiment ID matches manifest")
