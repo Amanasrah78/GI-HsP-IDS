@@ -7,6 +7,7 @@ from preprocessing.build_training_windows import (
     build_stable_node_index,
     build_window_records,
     encode_graph_snapshot,
+    summarize_graph_nodes,
     summarize_packet_window,
     validate_window_alignment,
     write_window_records,
@@ -243,11 +244,150 @@ class EncodeGraphSnapshotTests(unittest.TestCase):
                 "event_count": 3,
                 "payload_bytes": 75,
             }],
+            "node_features": [
+                {
+                    "active": 1,
+                    "in_neighbor_count": 1,
+                    "out_neighbor_count": 0,
+                    "in_event_count": 3,
+                    "out_event_count": 0,
+                    "in_payload_bytes": 75,
+                    "out_payload_bytes": 0,
+                },
+                {
+                    "active": 1,
+                    "in_neighbor_count": 0,
+                    "out_neighbor_count": 1,
+                    "in_event_count": 0,
+                    "out_event_count": 3,
+                    "in_payload_bytes": 0,
+                    "out_payload_bytes": 75,
+                },
+            ],
         })
         self.assertNotIn(
             "192.0.2.",
             json.dumps(encoded),
         )
+
+
+class SummarizeGraphNodesTests(unittest.TestCase):
+    def test_builds_directed_node_local_features(self):
+        features = summarize_graph_nodes({
+            "node_count": 3,
+            "active_node_indices": [0, 1],
+            "edges": [
+                {
+                    "source_index": 0,
+                    "target_index": 1,
+                    "event_count": 2,
+                    "payload_bytes": 10,
+                },
+                {
+                    "source_index": 1,
+                    "target_index": 0,
+                    "event_count": 3,
+                    "payload_bytes": 12,
+                },
+            ],
+        })
+
+        self.assertEqual(features, [
+            {
+                "active": 1,
+                "in_neighbor_count": 1,
+                "out_neighbor_count": 1,
+                "in_event_count": 3,
+                "out_event_count": 2,
+                "in_payload_bytes": 12,
+                "out_payload_bytes": 10,
+            },
+            {
+                "active": 1,
+                "in_neighbor_count": 1,
+                "out_neighbor_count": 1,
+                "in_event_count": 2,
+                "out_event_count": 3,
+                "in_payload_bytes": 10,
+                "out_payload_bytes": 12,
+            },
+            {
+                "active": 0,
+                "in_neighbor_count": 0,
+                "out_neighbor_count": 0,
+                "in_event_count": 0,
+                "out_event_count": 0,
+                "in_payload_bytes": 0,
+                "out_payload_bytes": 0,
+            },
+        ])
+
+    def test_counts_distinct_neighbors(self):
+        features = summarize_graph_nodes({
+            "node_count": 2,
+            "active_node_indices": [0, 1],
+            "edges": [
+                {
+                    "source_index": 0,
+                    "target_index": 1,
+                    "event_count": 2,
+                    "payload_bytes": 10,
+                },
+                {
+                    "source_index": 0,
+                    "target_index": 1,
+                    "event_count": 3,
+                    "payload_bytes": 15,
+                },
+            ],
+        })
+
+        self.assertEqual(
+            features[0]["out_neighbor_count"],
+            1,
+        )
+        self.assertEqual(
+            features[0]["out_event_count"],
+            5,
+        )
+        self.assertEqual(
+            features[1]["in_payload_bytes"],
+            25,
+        )
+
+    def test_rejects_invalid_indices_and_aggregates(self):
+        invalid_graphs = [
+            {
+                "node_count": 1,
+                "active_node_indices": [1],
+                "edges": [],
+            },
+            {
+                "node_count": 1,
+                "active_node_indices": [0],
+                "edges": [{
+                    "source_index": 0,
+                    "target_index": 1,
+                    "event_count": 1,
+                    "payload_bytes": 0,
+                }],
+            },
+            {
+                "node_count": 1,
+                "active_node_indices": [0],
+                "edges": [{
+                    "source_index": 0,
+                    "target_index": 0,
+                    "event_count": 0,
+                    "payload_bytes": 0,
+                }],
+            },
+        ]
+
+        for graph in invalid_graphs:
+            with self.subTest(graph=graph):
+                with self.assertRaises(ValueError):
+                    summarize_graph_nodes(graph)
 
 
 class WindowRecordSerializationTests(unittest.TestCase):
@@ -294,12 +434,21 @@ class WindowRecordSerializationTests(unittest.TestCase):
                 "label",
             },
         )
-        self.assertEqual(records[0]["schema_version"], 1)
+        self.assertEqual(records[0]["schema_version"], 2)
         self.assertEqual(records[0]["window_seconds"], 5.0)
         self.assertEqual(records[0]["graph"], {
             "node_count": 1,
             "active_node_indices": [0],
             "edges": [],
+            "node_features": [{
+                "active": 1,
+                "in_neighbor_count": 0,
+                "out_neighbor_count": 0,
+                "in_event_count": 0,
+                "out_event_count": 0,
+                "in_payload_bytes": 0,
+                "out_payload_bytes": 0,
+            }],
         })
         self.assertNotIn(
             "192.0.2.10",

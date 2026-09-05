@@ -19,7 +19,7 @@ def make_record(index):
     start = 100.0 + index * 5.0
 
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "experiment_id": "experiment-a",
         "window_seconds": 5.0,
         "window_index": index,
@@ -88,7 +88,7 @@ class ValidateWindowRecordsTests(unittest.TestCase):
         cases = {}
 
         records = copy.deepcopy(base)
-        records[1]["schema_version"] = 2
+        records[1]["schema_version"] = 1
         cases["schema"] = records
 
         records = copy.deepcopy(base)

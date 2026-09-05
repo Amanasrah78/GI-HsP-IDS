@@ -6,6 +6,9 @@ from pathlib import Path
 import yaml
 
 
+WINDOW_SCHEMA_VERSION = 2
+
+
 def load_yaml(path: Path):
     with path.open("r", encoding="utf-8") as f:
         return yaml.safe_load(f)
@@ -170,7 +173,7 @@ def encode_graph_snapshot(snapshot, node_index):
         )
     )
 
-    return {
+    encoded_graph = {
         "node_count": len(node_index),
         "active_node_indices": sorted(
             node_index[node["id"]]
@@ -178,6 +181,86 @@ def encode_graph_snapshot(snapshot, node_index):
         ),
         "edges": edges,
     }
+    encoded_graph["node_features"] = (
+        summarize_graph_nodes(encoded_graph)
+    )
+
+    return encoded_graph
+
+
+def summarize_graph_nodes(encoded_graph):
+    node_count = encoded_graph["node_count"]
+    active_nodes = set(
+        encoded_graph["active_node_indices"]
+    )
+
+    if (
+        node_count < 0
+        or any(
+            index < 0 or index >= node_count
+            for index in active_nodes
+        )
+    ):
+        raise ValueError(
+            "Graph contains an invalid active node index"
+        )
+
+    incoming_neighbors = [
+        set() for _ in range(node_count)
+    ]
+    outgoing_neighbors = [
+        set() for _ in range(node_count)
+    ]
+    features = [
+        {
+            "active": int(index in active_nodes),
+            "in_neighbor_count": 0,
+            "out_neighbor_count": 0,
+            "in_event_count": 0,
+            "out_event_count": 0,
+            "in_payload_bytes": 0,
+            "out_payload_bytes": 0,
+        }
+        for index in range(node_count)
+    ]
+
+    for edge in encoded_graph["edges"]:
+        source = edge["source_index"]
+        target = edge["target_index"]
+        event_count = int(edge["event_count"])
+        payload_bytes = int(edge["payload_bytes"])
+
+        if (
+            source < 0
+            or source >= node_count
+            or target < 0
+            or target >= node_count
+        ):
+            raise ValueError(
+                "Graph edge contains an invalid node index"
+            )
+
+        if event_count <= 0 or payload_bytes < 0:
+            raise ValueError(
+                "Graph edge contains invalid aggregates"
+            )
+
+        outgoing_neighbors[source].add(target)
+        incoming_neighbors[target].add(source)
+        features[source]["out_event_count"] += event_count
+        features[target]["in_event_count"] += event_count
+        features[source]["out_payload_bytes"] += payload_bytes
+        features[target]["in_payload_bytes"] += payload_bytes
+
+    for index in range(node_count):
+        features[index]["in_neighbor_count"] = len(
+            incoming_neighbors[index]
+        )
+        features[index]["out_neighbor_count"] = len(
+            outgoing_neighbors[index]
+        )
+
+    return features
 
 
 def build_window_records(
@@ -194,7 +277,7 @@ def build_window_records(
         packet_features_by_window,
     ):
         records.append({
-            "schema_version": 1,
+            "schema_version": WINDOW_SCHEMA_VERSION,
             "experiment_id": experiment_id,
             "window_seconds": graph_data["window_seconds"],
             "window_index": snapshot["window_index"],

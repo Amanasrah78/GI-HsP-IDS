@@ -4,7 +4,8 @@ import json
 from pathlib import Path
 
 
-SUPPORTED_SCHEMA_VERSION = 1
+SUPPORTED_WINDOW_SCHEMA_VERSION = 2
+SEQUENCE_SCHEMA_VERSION = 1
 DEFAULT_SEQUENCE_LENGTH = 10
 DEFAULT_SEQUENCE_STRIDE = 1
 
@@ -45,7 +46,7 @@ def validate_window_records(records):
     for expected_index, record in enumerate(records):
         if (
             record["schema_version"]
-            != SUPPORTED_SCHEMA_VERSION
+            != SUPPORTED_WINDOW_SCHEMA_VERSION
         ):
             raise ValueError(
                 "Unsupported window schema version"
@@ -126,7 +127,7 @@ def build_sequences(
         last = window_slice[-1]
 
         sequences.append({
-            "schema_version": 1,
+            "schema_version": SEQUENCE_SCHEMA_VERSION,
             "window_schema_version": first[
                 "schema_version"
             ],

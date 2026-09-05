@@ -49,7 +49,7 @@ def make_records(count=2):
     for index in range(count):
         start = 100.0 + index * 5.0
         records.append({
-            "schema_version": 1,
+            "schema_version": 2,
             "experiment_id": "experiment-001",
             "window_seconds": 5.0,
             "window_index": index,
