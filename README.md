@@ -22,7 +22,8 @@ Run:
 
 The pipeline runs Zeek, creates the flow and MQTT CSV files, builds
 the static and five-second dynamic graphs, extracts packet records,
-and writes aligned training windows.
+and writes aligned training windows. When at least ten complete
+windows are available, it also writes unpadded temporal sequences.
 
 Generated artifacts are placed under `results/` and `graph/output/`.
 These directories are excluded from version control.
@@ -96,6 +97,51 @@ This stable spatial axis follows the source architecture's
 spatio-temporal formulation, in which each node has a feature sequence
 over successive time steps. See
 [Aljuhani et al., MFTST](https://doi.org/10.1016/j.cose.2026.104999).
+
+## Temporal sequence format
+
+The default sequence output is:
+
+```text
+results/processed/<experiment_id>.sequences.jsonl
+```
+
+Each sequence contains ten consecutive five-second window records,
+giving a 50-second temporal context. The default stride is one window,
+so adjacent sequences overlap by nine windows. Sequences are never
+padded. Captures with fewer than ten complete windows retain their
+window JSONL but do not produce a sequence JSONL.
+
+Each sequence record contains:
+
+- `schema_version` and `window_schema_version`
+- `experiment_id` and `window_seconds`
+- `sequence_index` and `sequence_length`
+- `start_window_index` and `end_window_index`
+- `start_ts` and `end_ts`
+- `steps`, containing the ordered packet features and encoded graph
+  for each window
+- `label`, stored once at sequence level
+
+The sequence builder validates contiguous indices and timestamps,
+constant labels, a constant window duration, and a stable graph-node
+axis before serialization. The default length of ten and stride of one
+match the current MFTST target configuration. Short diagnostic captures
+can be processed without weakening this fixed-length model contract.
+
+To generate sequences explicitly with different research parameters,
+run:
+
+```bash
+python3 preprocessing/build_training_sequences.py \
+  results/processed/<experiment_id>.windows.jsonl \
+  --sequence-length 10 \
+  --stride 1
+```
+
+Dataset partitions must be assigned by complete experiment before
+overlapping sequences are used for model training. Splitting individual
+sequences would place shared windows in different partitions.
 
 ## Predictive-feature boundary
 
