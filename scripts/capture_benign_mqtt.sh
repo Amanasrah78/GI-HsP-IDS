@@ -17,6 +17,9 @@ docker compose -f "$COMPOSE_FILE" stop iot-client-1 iot-client-2
 
 rm -f "$PCAP_FILE" "$HASH_FILE"
 
+# Authenticate sudo before launching tcpdump in the background.
+sudo -v
+
 sudo tcpdump \
   -i "$INTERFACE" \
   -nn \

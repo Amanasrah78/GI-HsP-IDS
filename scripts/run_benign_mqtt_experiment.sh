@@ -25,19 +25,19 @@ echo "Duration      : ${DURATION}s"
 echo "========================================"
 
 echo
-echo "[Stage 1/4] Capturing traffic..."
+echo "[Stage 1/5] Capturing traffic..."
 ./scripts/capture_benign_mqtt.sh \
     "$EXPERIMENT_ID" \
     "$DURATION"
 
 echo
-echo "[Stage 2/4] Processing capture..."
+echo "[Stage 2/5] Processing capture..."
 ./scripts/process_pcap.sh \
     "$PCAP_FILE" \
     "$EXPERIMENT_ID"
 
 echo
-echo "[Stage 3/4] Writing experiment manifest..."
+echo "[Stage 3/5] Writing experiment manifest..."
 python3 scripts/write_experiment_manifest.py \
     "$EXPERIMENT_ID" \
     "$PCAP_FILE" \
@@ -45,7 +45,12 @@ python3 scripts/write_experiment_manifest.py \
     --output "$MANIFEST_FILE"
 
 echo
-echo "[Stage 4/4] Validating experiment..."
+echo "[Stage 4/5] Writing experiment summary..."
+./scripts/write_experiment_summary.sh \
+    "$EXPERIMENT_ID"
+
+echo
+echo "[Stage 5/5] Validating experiment..."
 python3 scripts/validate_experiment.py \
     "$EXPERIMENT_ID"
 
