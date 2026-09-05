@@ -65,11 +65,11 @@ def summarize_packet_window(packet_rows):
         "mean_interarrival_seconds": mean_interarrival,
         "std_interarrival_seconds": std_interarrival,
         "max_interarrival_seconds": max_interarrival,
-        "retransmission_count": sum(
+        "suspected_retransmission_count": sum(
             bool(row["retransmission"])
             for row in packet_rows
         ),
-        "lost_segment_count": sum(
+        "previous_segment_not_captured_count": sum(
             bool(row["lost_segment"])
             for row in packet_rows
         ),
@@ -125,6 +125,7 @@ def validate_window_alignment(
 
 
 def build_window_records(
+    experiment_id,
     graph_data,
     packet_features_by_window,
     label,
@@ -136,6 +137,7 @@ def build_window_records(
         packet_features_by_window,
     ):
         records.append({
+            "experiment_id": experiment_id,
             "window_index": snapshot["window_index"],
             "start_ts": snapshot["start_ts"],
             "end_ts": snapshot["end_ts"],
@@ -146,6 +148,30 @@ def build_window_records(
     return records
 
 
+def write_window_records(output_path, records):
+    output_path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    temporary_path = output_path.with_name(
+        output_path.name + ".tmp"
+    )
+
+    with temporary_path.open(
+        "w",
+        encoding="utf-8",
+    ) as f:
+        for record in records:
+            json.dump(
+                record,
+                f,
+                sort_keys=True,
+            )
+            f.write("\n")
+
+    temporary_path.replace(output_path)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("experiment_id")
@@ -153,9 +179,17 @@ def main():
         "--feature-config",
         default="configs/flow_features.yaml",
     )
+    parser.add_argument("--output")
     args = parser.parse_args()
 
     experiment_id = args.experiment_id
+    output_path = Path(
+        args.output
+        or (
+            "results/processed/"
+            f"{experiment_id}.windows.jsonl"
+        )
+    )
 
     flow_csv = Path(
         f"results/processed/{experiment_id}.csv"
@@ -235,9 +269,15 @@ def main():
     )
 
     window_records = build_window_records(
+        experiment_id,
         graph_data,
         packet_features_by_window,
         manifest["label"],
+    )
+
+    write_window_records(
+        output_path,
+        window_records,
     )
 
     print("experiment_id:", experiment_id)
@@ -249,14 +289,7 @@ def main():
         "packets_per_window:",
         [len(rows) for rows in packets_by_window],
     )
-    print(
-        "packet_features_by_window:",
-        packet_features_by_window,
-    )
-    print(
-        "window_records:",
-        window_records,
-    )
+    print("output_path:", output_path)
     print(
         "numeric_features:",
         feature_config["numeric_features"],
