@@ -10,9 +10,14 @@ EXPERIMENT_ID="$1"
 DURATION="${2:-30}"
 
 PCAP_FILE="capture/pcap/${EXPERIMENT_ID}.pcap"
+HASH_FILE="capture/pcap/${EXPERIMENT_ID}.sha256"
 MANIFEST_FILE="experiments/${EXPERIMENT_ID}.yaml"
+CSV_FILE="results/processed/${EXPERIMENT_ID}.csv"
+SUMMARY_FILE="results/processed/${EXPERIMENT_ID}.summary.json"
+GRAPH_FILE="graph/output/${EXPERIMENT_ID}.json"
+ZEEK_DIR="results/raw/${EXPERIMENT_ID}"
 
-if [ -e "$PCAP_FILE" ] || [ -e "$MANIFEST_FILE" ]; then
+if [ -e "$PCAP_FILE" ]     || [ -e "$HASH_FILE" ]     || [ -e "$MANIFEST_FILE" ]     || [ -e "$CSV_FILE" ]     || [ -e "$SUMMARY_FILE" ]     || [ -e "$GRAPH_FILE" ]     || [ -e "$ZEEK_DIR" ]; then
     echo "ERROR: Experiment ID already exists: $EXPERIMENT_ID"
     echo "Refusing to overwrite existing experiment artifacts."
     exit 1
