@@ -262,6 +262,102 @@ def main():
                     )
                     ok = False
 
+                csv_aggregates = {}
+
+                with csv_path.open(
+                    "r",
+                    encoding="utf-8",
+                    newline="",
+                ) as f:
+                    reader = csv.DictReader(f)
+
+                    for row in reader:
+                        pair = (
+                            row["id.orig_h"],
+                            row["id.resp_h"],
+                        )
+
+                        agg = csv_aggregates.setdefault(
+                            pair,
+                            {
+                                "flows": 0,
+                                "orig_bytes": 0,
+                                "resp_bytes": 0,
+                                "orig_pkts": 0,
+                                "resp_pkts": 0,
+                                "total_duration": 0.0,
+                            },
+                        )
+
+                        agg["flows"] += 1
+                        agg["orig_bytes"] += int(
+                            row["orig_bytes"] or 0
+                        )
+                        agg["resp_bytes"] += int(
+                            row["resp_bytes"] or 0
+                        )
+                        agg["orig_pkts"] += int(
+                            row["orig_pkts"] or 0
+                        )
+                        agg["resp_pkts"] += int(
+                            row["resp_pkts"] or 0
+                        )
+                        agg["total_duration"] += float(
+                            row["duration"] or 0.0
+                        )
+
+                graph_aggregates = {
+                    (
+                        edge["source"],
+                        edge["target"],
+                    ): {
+                        "flows": edge["flows"],
+                        "orig_bytes": edge["orig_bytes"],
+                        "resp_bytes": edge["resp_bytes"],
+                        "orig_pkts": edge["orig_pkts"],
+                        "resp_pkts": edge["resp_pkts"],
+                        "total_duration": edge["total_duration"],
+                    }
+                    for edge in edges
+                    if isinstance(edge, dict)
+                }
+
+                aggregates_match = True
+
+                for pair, expected in csv_aggregates.items():
+                    actual = graph_aggregates.get(pair)
+
+                    if actual is None:
+                        aggregates_match = False
+                        continue
+
+                    for key in (
+                        "flows",
+                        "orig_bytes",
+                        "resp_bytes",
+                        "orig_pkts",
+                        "resp_pkts",
+                    ):
+                        if actual[key] != expected[key]:
+                            aggregates_match = False
+
+                    if abs(
+                        actual["total_duration"]
+                        - expected["total_duration"]
+                    ) > 1e-9:
+                        aggregates_match = False
+
+                if aggregates_match:
+                    print(
+                        "[OK]   Graph edge aggregates match Flow CSV"
+                    )
+                else:
+                    print(
+                        "[FAIL] Graph edge aggregates do not match "
+                        "Flow CSV"
+                    )
+                    ok = False
+
         except (json.JSONDecodeError, OSError) as exc:
             print(f"[FAIL] Graph JSON invalid: {exc}")
             ok = False
