@@ -12,6 +12,12 @@ DURATION="${2:-30}"
 PCAP_FILE="capture/pcap/${EXPERIMENT_ID}.pcap"
 MANIFEST_FILE="experiments/${EXPERIMENT_ID}.yaml"
 
+if [ -e "$PCAP_FILE" ] || [ -e "$MANIFEST_FILE" ]; then
+    echo "ERROR: Experiment ID already exists: $EXPERIMENT_ID"
+    echo "Refusing to overwrite existing experiment artifacts."
+    exit 1
+fi
+
 echo "========================================"
 echo "GI-HsP benign MQTT experiment"
 echo "Experiment ID : $EXPERIMENT_ID"
