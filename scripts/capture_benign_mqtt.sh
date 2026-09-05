@@ -13,6 +13,19 @@ echo "Experiment : $EXPERIMENT_ID"
 echo "Duration   : ${DURATION}s"
 echo "PCAP       : $PCAP_FILE"
 
+TCPDUMP_PID=""
+
+cleanup() {
+    docker compose -f "$COMPOSE_FILE" stop         iot-client-1 iot-client-2 >/dev/null 2>&1 || true
+
+    if [ -n "$TCPDUMP_PID" ] && kill -0 "$TCPDUMP_PID" 2>/dev/null; then
+        sudo kill -INT "$TCPDUMP_PID" 2>/dev/null || true
+        wait "$TCPDUMP_PID" 2>/dev/null || true
+    fi
+}
+
+trap cleanup EXIT INT TERM
+
 docker compose -f "$COMPOSE_FILE" stop iot-client-1 iot-client-2
 
 rm -f "$PCAP_FILE" "$HASH_FILE"
