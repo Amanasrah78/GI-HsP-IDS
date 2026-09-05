@@ -1,0 +1,54 @@
+experiment_id: benign-mqtt-e2e-011
+created_utc: '2026-09-05T12:04:11.107280+00:00'
+label:
+  class: benign
+  attack_goal: none
+  hsp_family: none
+network:
+  name: gi-hsp-net
+  subnet: 172.30.0.0/24
+  capture_interface: br-c73cfc820324
+services:
+  mqtt_broker_1:
+    container: mqtt-broker
+    ip: 172.30.0.10
+    port: 1883
+  mqtt_broker_2:
+    container: mqtt-broker-2
+    ip: 172.30.0.11
+    port: 1883
+mqtt_bridge:
+  source_broker: mqtt-broker-2
+  destination_broker: mqtt-broker
+  topic: iot/#
+  direction: out
+  qos: 0
+clients:
+- container: iot-client-1
+  ip: 172.30.0.20
+  broker: mqtt-broker
+  publish_interval_seconds: 5
+- container: iot-client-2
+  ip: 172.30.0.21
+  broker: mqtt-broker-2
+  publish_interval_seconds: 7
+- container: iot-subscriber-1
+  ip: 172.30.0.30
+  broker: mqtt-broker
+  role: subscriber
+  subscribe_topic: iot/#
+capture:
+  file: capture/pcap/benign-mqtt-e2e-011.pcap
+  duration_seconds: 10
+  filter: port 1883
+  sha256: db8c4522d3588bbc2a52ad06c0a51a2680b479f9442a1fc73ec75e5f08486918
+  zeek_checksum_handling: ignore_checksums_with_-C
+environment:
+  python: Python 3.12.3
+  docker: Docker version 29.8.0, build 88096ef
+  zeek: zeek version 8.0.10
+  git_commit: 4178edcf547efd9442fe057c2f019d165c7baa43
+  images:
+    mosquitto: sha256:6f8d8a947c506f8a2290ec65cd4bd2bc7cb4d43fb5f6271f861cb013e2ef9797
+    iot_client: sha256:ae1265654fbb304bb523540abcd079ed090a5b72364469052a6d8d413b9773f7
+    zeek: sha256:73e80e9cd23ff71fd28d158e9a9af5c7b2b0ef5d4036af61521827531347c0e3
