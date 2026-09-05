@@ -25,6 +25,9 @@ def main():
     flow_csv = Path(
         f"results/processed/{experiment_id}.csv"
     )
+    packet_csv = Path(
+        f"results/processed/{experiment_id}.packets.csv"
+    )
     dynamic_graph = Path(
         f"graph/output/{experiment_id}.dynamic.json"
     )
@@ -43,16 +46,58 @@ def main():
     ) as f:
         flow_rows = list(csv.DictReader(f))
 
+    with packet_csv.open(
+        "r",
+        encoding="utf-8",
+        newline="",
+    ) as f:
+        packet_rows = list(csv.DictReader(f))
+
     with dynamic_graph.open(
         "r",
         encoding="utf-8",
     ) as f:
         graph_data = json.load(f)
 
+    measurement_start_ts = graph_data[
+        "measurement_start_ts"
+    ]
+    window_seconds = graph_data["window_seconds"]
+    snapshot_count = graph_data["snapshot_count"]
+    analysis_end_ts = (
+        measurement_start_ts
+        + snapshot_count * window_seconds
+    )
+
+    packets_by_window = [
+        [] for _ in range(snapshot_count)
+    ]
+
+    for row in packet_rows:
+        ts = float(row["ts"])
+
+        if ts < measurement_start_ts:
+            continue
+
+        if ts >= analysis_end_ts:
+            continue
+
+        window_index = int(
+            (ts - measurement_start_ts)
+            // window_seconds
+        )
+
+        packets_by_window[window_index].append(row)
+
     print("experiment_id:", experiment_id)
     print("label:", manifest["label"])
     print("flow_rows:", len(flow_rows))
+    print("packet_rows:", len(packet_rows))
     print("graph_snapshots:", graph_data["snapshot_count"])
+    print(
+        "packets_per_window:",
+        [len(rows) for rows in packets_by_window],
+    )
     print(
         "numeric_features:",
         feature_config["numeric_features"],
