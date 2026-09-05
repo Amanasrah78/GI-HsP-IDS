@@ -48,10 +48,12 @@ docker compose -f "$COMPOSE_FILE" start     iot-subscriber-1 iot-client-1 iot-cl
 
 sleep "$DURATION"
 
-docker compose -f "$COMPOSE_FILE" stop     iot-client-1 iot-client-2 iot-subscriber-1
-
+# End the measurement window before stopping application containers.
 sudo kill -INT "$TCPDUMP_PID"
 wait "$TCPDUMP_PID" || true
+TCPDUMP_PID=""
+
+docker compose -f "$COMPOSE_FILE" stop     iot-client-1 iot-client-2 iot-subscriber-1
 
 sha256sum "$PCAP_FILE" > "$HASH_FILE"
 
