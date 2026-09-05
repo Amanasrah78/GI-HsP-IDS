@@ -1,0 +1,33 @@
+experiment_id: benign-mqtt-clean-001
+description: Clean benign MQTT traffic from two IoT clients to one Mosquitto broker.
+
+network:
+  name: gi-hsp-net
+  subnet: 172.30.0.0/24
+  bridge: br-c73cfc820324
+
+services:
+  mqtt_broker:
+    container: mqtt-broker
+    ip: 172.30.0.10
+    port: 1883
+
+clients:
+  - container: iot-client-1
+    ip: 172.30.0.20
+    publish_interval_seconds: 5
+
+  - container: iot-client-2
+    ip: 172.30.0.21
+    publish_interval_seconds: 7
+
+capture:
+  file: capture/pcap/benign-mqtt-clean.pcap
+  interface: br-c73cfc820324
+  filter: port 1883
+  checksum_handling: zeek_ignore_checksums
+
+label:
+  class: benign
+  attack_goal: none
+  hsp_family: none
