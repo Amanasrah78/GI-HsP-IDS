@@ -72,6 +72,29 @@ See the
 [Wireshark TCP field reference](https://www.wireshark.org/docs/dfref/t/tcp.html)
 for the authoritative definitions.
 
+## Encoded graph topology
+
+Each window record also contains a `graph` object with:
+
+- `node_count`, the stable spatial-axis size for the experiment.
+- `active_node_indices`, the nodes active in the current window.
+- `edges`, containing `source_index`, `target_index`,
+  `event_count`, and `payload_bytes`.
+
+Node indices are generated once per experiment and remain stable
+across its windows. This preserves temporal node correspondence.
+The indices are topology coordinates only. They must not be treated
+as ordered numeric node features or learned identity values.
+
+Raw endpoint identifiers remain available in the dynamic graph for
+auditability, but the IP-to-index mapping is not copied into the
+training-window JSONL.
+
+This stable spatial axis follows the source architecture's
+spatio-temporal formulation, in which each node has a feature sequence
+over successive time steps. See
+[Aljuhani et al., MFTST](https://doi.org/10.1016/j.cose.2026.104999).
+
 ## Predictive-feature boundary
 
 Only values nested under `packet_features` belong to the packet
