@@ -1,5 +1,6 @@
 import argparse
 import hashlib
+import json
 from pathlib import Path
 
 import yaml
@@ -76,6 +77,56 @@ def main():
     else:
         print("[FAIL] Experiment ID mismatch")
         ok = False
+
+    if graph_path.exists():
+        try:
+            with graph_path.open("r", encoding="utf-8") as f:
+                graph = json.load(f)
+
+            nodes = graph.get("nodes")
+            edges = graph.get("edges")
+
+            if isinstance(nodes, list) and len(nodes) > 0:
+                print("[OK]   Graph contains nodes")
+            else:
+                print("[FAIL] Graph nodes missing or empty")
+                ok = False
+
+            if isinstance(edges, list):
+                print("[OK]   Graph contains edge list")
+            else:
+                print("[FAIL] Graph edges missing or invalid")
+                ok = False
+                edges = []
+
+            node_ids = {
+                node.get("id")
+                for node in nodes or []
+                if isinstance(node, dict) and node.get("id") is not None
+            }
+
+            invalid_edges = [
+                edge
+                for edge in edges
+                if (
+                    not isinstance(edge, dict)
+                    or edge.get("source") not in node_ids
+                    or edge.get("target") not in node_ids
+                )
+            ]
+
+            if not invalid_edges:
+                print("[OK]   All graph edges reference declared nodes")
+            else:
+                print(
+                    f"[FAIL] {len(invalid_edges)} graph edge(s) "
+                    "reference invalid nodes"
+                )
+                ok = False
+
+        except (json.JSONDecodeError, OSError) as exc:
+            print(f"[FAIL] Graph JSON invalid: {exc}")
+            ok = False
 
     if not ok:
         raise SystemExit(1)
