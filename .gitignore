@@ -36,3 +36,10 @@ capture/*.pcapng
 .env
 *.key
 *.pem
+
+# MQTT runtime data
+docker/mqtt/log/*
+docker/mqtt/data/*
+!docker/mqtt/log/.gitkeep
+!docker/mqtt/data/.gitkeep
+
