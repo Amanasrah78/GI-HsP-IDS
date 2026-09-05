@@ -136,5 +136,74 @@ class ModelInputAssemblyTests(unittest.TestCase):
             assemble_sequence_inputs(record)
 
 
+class ModelInputAdjacencyTests(unittest.TestCase):
+    def test_builds_directed_event_count_adjacency(self):
+        record = {
+            "sequence_length": 10,
+            "label": {
+                "class": "benign",
+                "attack_goal": "none",
+                "hsp_family": "none",
+            },
+            "steps": [],
+        }
+
+        for _ in range(10):
+            record["steps"].append({
+                "packet_features": {
+                    "packet_count": 1,
+                    "frame_bytes": 2,
+                    "tcp_payload_bytes": 3,
+                    "mean_frame_len": 4,
+                    "mean_tcp_payload_len": 5,
+                    "mean_interarrival_seconds": 6,
+                    "std_interarrival_seconds": 7,
+                    "max_interarrival_seconds": 8,
+                    "suspected_retransmission_count": 9,
+                    "previous_segment_not_captured_count": 10,
+                },
+                "graph": {
+                    "node_count": 3,
+                    "node_features": [
+                        {
+                            "active": 1,
+                            "in_neighbor_count": 0,
+                            "out_neighbor_count": 1,
+                            "in_event_count": 0,
+                            "out_event_count": 2,
+                            "in_payload_bytes": 0,
+                            "out_payload_bytes": 200,
+                        }
+                        for _ in range(3)
+                    ],
+                    "edges": [
+                        {
+                            "source_index": 0,
+                            "target_index": 1,
+                            "event_count": 2,
+                            "payload_bytes": 200,
+                        },
+                        {
+                            "source_index": 2,
+                            "target_index": 0,
+                            "event_count": 1,
+                            "payload_bytes": 100,
+                        },
+                    ],
+                },
+            })
+
+        assembled = assemble_sequence_inputs(record)
+
+        self.assertEqual(
+            assembled["adjacency"][0],
+            [
+                [0.0, 2.0, 0.0],
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+            ],
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
