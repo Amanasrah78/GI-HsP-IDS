@@ -1,0 +1,33 @@
+experiment_id: benign-mqtt-e2e-003
+created_utc: '2026-09-05T10:08:06.195133+00:00'
+label:
+  class: benign
+  attack_goal: none
+  hsp_family: none
+network:
+  name: gi-hsp-net
+  subnet: 172.30.0.0/24
+  capture_interface: br-c73cfc820324
+services:
+  mqtt_broker:
+    container: mqtt-broker
+    ip: 172.30.0.10
+    port: 1883
+clients:
+- container: iot-client-1
+  ip: 172.30.0.20
+  publish_interval_seconds: 5
+- container: iot-client-2
+  ip: 172.30.0.21
+  publish_interval_seconds: 7
+capture:
+  file: capture/pcap/benign-mqtt-e2e-003.pcap
+  duration_seconds: 10
+  filter: port 1883
+  sha256: 6b8cc203a5c9988da030c394126811a1735424b90515356894a99de535ff396b
+  zeek_checksum_handling: ignore_checksums_with_-C
+environment:
+  python: Python 3.12.3
+  docker: Docker version 29.8.0, build 88096ef
+  zeek: zeek version 8.0.10
+  git_commit: 2578bec99d797d8074688bbc9148b224858387c0
