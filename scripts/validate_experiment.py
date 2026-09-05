@@ -27,6 +27,7 @@ from preprocessing.build_training_sequences import (
     validate_sequence_records,
     validate_window_records,
 )
+from hsp.taxonomy import validate_hsp_label
 
 
 def validate_packet_rows(columns, rows):
@@ -287,6 +288,13 @@ def main():
 
     with manifest_path.open("r", encoding="utf-8") as f:
         manifest = yaml.safe_load(f)
+
+    try:
+        validate_hsp_label(manifest["label"])
+        print("[OK]   Manifest label matches HsP taxonomy")
+    except (KeyError, TypeError, ValueError) as exc:
+        print(f"[FAIL] Manifest label invalid: {exc}")
+        ok = False
 
     actual_hash = sha256_file(pcap_path)
     manifest_hash = manifest["capture"]["sha256"]
