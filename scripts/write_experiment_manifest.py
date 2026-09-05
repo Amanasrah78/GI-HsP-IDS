@@ -1,5 +1,6 @@
 import argparse
 import hashlib
+import json
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -27,11 +28,16 @@ def main():
     parser.add_argument("experiment_id")
     parser.add_argument("pcap_file")
     parser.add_argument("--duration", type=int, required=True)
+    parser.add_argument("--timing-file", required=True)
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
 
     pcap_path = Path(args.pcap_file)
+    timing_path = Path(args.timing_file)
     output_path = Path(args.output)
+
+    with timing_path.open("r", encoding="utf-8") as f:
+        timing = json.load(f)
 
     manifest = {
         "experiment_id": args.experiment_id,
@@ -89,6 +95,10 @@ def main():
         "capture": {
             "file": str(pcap_path),
             "duration_seconds": args.duration,
+            "measurement_start_ts": timing["measurement_start_ts"],
+            "measurement_end_ts": timing["measurement_end_ts"],
+            "measurement_start_utc": timing["measurement_start_utc"],
+            "measurement_end_utc": timing["measurement_end_utc"],
             "filter": "port 1883",
             "sha256": sha256_file(pcap_path),
             "zeek_checksum_handling": "ignore_checksums_with_-C",

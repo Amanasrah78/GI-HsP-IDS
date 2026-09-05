@@ -11,13 +11,14 @@ DURATION="${2:-30}"
 
 PCAP_FILE="capture/pcap/${EXPERIMENT_ID}.pcap"
 HASH_FILE="capture/pcap/${EXPERIMENT_ID}.sha256"
+TIMING_FILE="capture/pcap/${EXPERIMENT_ID}.timing.json"
 MANIFEST_FILE="experiments/${EXPERIMENT_ID}.yaml"
 CSV_FILE="results/processed/${EXPERIMENT_ID}.csv"
 SUMMARY_FILE="results/processed/${EXPERIMENT_ID}.summary.json"
 GRAPH_FILE="graph/output/${EXPERIMENT_ID}.json"
 ZEEK_DIR="results/raw/${EXPERIMENT_ID}"
 
-if [ -e "$PCAP_FILE" ]     || [ -e "$HASH_FILE" ]     || [ -e "$MANIFEST_FILE" ]     || [ -e "$CSV_FILE" ]     || [ -e "$SUMMARY_FILE" ]     || [ -e "$GRAPH_FILE" ]     || [ -e "$ZEEK_DIR" ]; then
+if [ -e "$PCAP_FILE" ]     || [ -e "$HASH_FILE" ]     || [ -e "$TIMING_FILE" ]     || [ -e "$MANIFEST_FILE" ]     || [ -e "$CSV_FILE" ]     || [ -e "$SUMMARY_FILE" ]     || [ -e "$GRAPH_FILE" ]     || [ -e "$ZEEK_DIR" ]; then
     echo "ERROR: Experiment ID already exists: $EXPERIMENT_ID"
     echo "Refusing to overwrite existing experiment artifacts."
     exit 1
@@ -47,6 +48,7 @@ python3 scripts/write_experiment_manifest.py \
     "$EXPERIMENT_ID" \
     "$PCAP_FILE" \
     --duration "$DURATION" \
+    --timing-file "$TIMING_FILE" \
     --output "$MANIFEST_FILE"
 
 echo
