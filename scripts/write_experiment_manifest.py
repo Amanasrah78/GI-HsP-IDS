@@ -1,5 +1,6 @@
 import argparse
 import hashlib
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -12,6 +13,13 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: f.read(1024 * 1024), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+def run_command(command):
+    return subprocess.check_output(
+        command,
+        text=True,
+    ).strip()
 
 
 def main():
@@ -63,6 +71,23 @@ def main():
             "filter": "port 1883",
             "sha256": sha256_file(pcap_path),
             "zeek_checksum_handling": "ignore_checksums_with_-C",
+        },
+        "environment": {
+            "python": run_command(["python3", "--version"]),
+            "docker": run_command(["docker", "--version"]),
+            "zeek": run_command([
+                "docker",
+                "run",
+                "--rm",
+                "zeek/zeek:lts",
+                "zeek",
+                "--version",
+            ]),
+            "git_commit": run_command([
+                "git",
+                "rev-parse",
+                "HEAD",
+            ]),
         },
     }
 
