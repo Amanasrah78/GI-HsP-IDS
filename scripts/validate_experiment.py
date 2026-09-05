@@ -26,6 +26,9 @@ def main():
     pcap_path = Path(f"capture/pcap/{experiment_id}.pcap")
     hash_path = Path(f"capture/pcap/{experiment_id}.sha256")
     csv_path = Path(f"results/processed/{experiment_id}.csv")
+    summary_path = Path(
+        f"results/processed/{experiment_id}.summary.json"
+    )
     graph_path = Path(f"graph/output/{experiment_id}.json")
     conn_path = Path(f"results/raw/{experiment_id}/zeek/conn.log")
 
@@ -35,6 +38,7 @@ def main():
         "sha256_sidecar": hash_path,
         "zeek_conn": conn_path,
         "flow_csv": csv_path,
+        "summary_json": summary_path,
         "graph_json": graph_path,
     }
 
@@ -178,6 +182,60 @@ def main():
 
         except (csv.Error, OSError) as exc:
             print(f"[FAIL] Flow CSV invalid: {exc}")
+            ok = False
+
+    if summary_path.exists():
+        try:
+            with summary_path.open("r", encoding="utf-8") as f:
+                summary = json.load(f)
+
+            expected_summary = {
+                "experiment_id": experiment_id,
+                "flow_count": sum(
+                    1
+                    for _ in csv.DictReader(
+                        csv_path.open(
+                            "r",
+                            encoding="utf-8",
+                            newline="",
+                        )
+                    )
+                ) if csv_path.exists() else None,
+                "graph_node_count": None,
+                "graph_edge_count": None,
+                "pcap_bytes": pcap_path.stat().st_size
+                if pcap_path.exists()
+                else None,
+            }
+
+            if graph_path.exists():
+                with graph_path.open("r", encoding="utf-8") as f:
+                    graph_for_summary = json.load(f)
+
+                expected_summary["graph_node_count"] = len(
+                    graph_for_summary.get("nodes", [])
+                )
+                expected_summary["graph_edge_count"] = len(
+                    graph_for_summary.get("edges", [])
+                )
+
+            mismatches = [
+                key
+                for key, expected in expected_summary.items()
+                if summary.get(key) != expected
+            ]
+
+            if not mismatches:
+                print("[OK]   Experiment summary matches artifacts")
+            else:
+                print(
+                    "[FAIL] Experiment summary mismatch: "
+                    + ", ".join(mismatches)
+                )
+                ok = False
+
+        except (json.JSONDecodeError, OSError) as exc:
+            print(f"[FAIL] Experiment summary invalid: {exc}")
             ok = False
 
     if graph_path.exists():
