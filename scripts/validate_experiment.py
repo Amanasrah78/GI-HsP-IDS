@@ -3,9 +3,84 @@ import csv
 import hashlib
 import json
 import math
+import sys
 from pathlib import Path
 
 import yaml
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from preprocessing.build_training_sequences import (
+    load_window_records,
+    validate_window_records,
+)
+
+
+def validate_training_windows(
+    records,
+    experiment_id,
+    label,
+    dynamic_graph,
+):
+    validate_window_records(records)
+
+    if records[0]["experiment_id"] != experiment_id:
+        raise ValueError(
+            "Window experiment ID does not match requested experiment"
+        )
+
+    if records[0]["label"] != label:
+        raise ValueError(
+            "Window label does not match manifest"
+        )
+
+    snapshots = dynamic_graph.get("snapshots")
+
+    if not isinstance(snapshots, list):
+        raise ValueError(
+            "Dynamic graph snapshots are invalid"
+        )
+
+    if len(records) != len(snapshots):
+        raise ValueError(
+            "Window count does not match dynamic graph"
+        )
+
+    node_ids = {
+        node["id"]
+        for snapshot in snapshots
+        for node in snapshot.get("nodes", [])
+        if isinstance(node, dict) and "id" in node
+    }
+    expected_node_count = len(node_ids)
+
+    for record, snapshot in zip(records, snapshots):
+        if record["window_index"] != snapshot["window_index"]:
+            raise ValueError(
+                "Window index does not match dynamic graph"
+            )
+
+        if (
+            abs(record["start_ts"] - snapshot["start_ts"])
+            > 1e-9
+            or abs(record["end_ts"] - snapshot["end_ts"])
+            > 1e-9
+        ):
+            raise ValueError(
+                "Window boundary does not match dynamic graph"
+            )
+
+        if (
+            record["graph"]["node_count"]
+            != expected_node_count
+        ):
+            raise ValueError(
+                "Encoded graph node count does not match "
+                "dynamic graph"
+            )
 
 
 def sha256_file(path: Path) -> str:
@@ -37,6 +112,9 @@ def main():
     dynamic_graph_path = Path(
         f"graph/output/{experiment_id}.dynamic.json"
     )
+    windows_path = Path(
+        f"results/processed/{experiment_id}.windows.jsonl"
+    )
     conn_path = Path(f"results/raw/{experiment_id}/zeek/conn.log")
 
     required = {
@@ -49,6 +127,7 @@ def main():
         "summary_json": summary_path,
         "graph_json": graph_path,
         "dynamic_graph_json": dynamic_graph_path,
+        "training_windows_jsonl": windows_path,
     }
 
     ok = True
@@ -516,6 +595,32 @@ def main():
                     print(
                         "[FAIL] Dynamic graph edge aggregates "
                         "do not match MQTT publish CSV"
+                    )
+                    ok = False
+
+            if windows_path.exists():
+                try:
+                    window_records = load_window_records(
+                        windows_path
+                    )
+                    validate_training_windows(
+                        window_records,
+                        experiment_id,
+                        manifest["label"],
+                        dynamic_graph,
+                    )
+                    print(
+                        "[OK]   Training windows match manifest "
+                        "and dynamic graph"
+                    )
+                except (
+                    KeyError,
+                    OSError,
+                    TypeError,
+                    ValueError,
+                ) as exc:
+                    print(
+                        f"[FAIL] Training windows invalid: {exc}"
                     )
                     ok = False
 
