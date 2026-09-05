@@ -124,6 +124,28 @@ def validate_window_alignment(
             )
 
 
+def build_window_records(
+    graph_data,
+    packet_features_by_window,
+    label,
+):
+    records = []
+
+    for snapshot, packet_features in zip(
+        graph_data["snapshots"],
+        packet_features_by_window,
+    ):
+        records.append({
+            "window_index": snapshot["window_index"],
+            "start_ts": snapshot["start_ts"],
+            "end_ts": snapshot["end_ts"],
+            "packet_features": packet_features,
+            "label": label,
+        })
+
+    return records
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("experiment_id")
@@ -212,6 +234,12 @@ def main():
         packet_features_by_window,
     )
 
+    window_records = build_window_records(
+        graph_data,
+        packet_features_by_window,
+        manifest["label"],
+    )
+
     print("experiment_id:", experiment_id)
     print("label:", manifest["label"])
     print("flow_rows:", len(flow_rows))
@@ -224,6 +252,10 @@ def main():
     print(
         "packet_features_by_window:",
         packet_features_by_window,
+    )
+    print(
+        "window_records:",
+        window_records,
     )
     print(
         "numeric_features:",
