@@ -23,7 +23,7 @@ services:
         ipv4_address: 172.30.0.11
 
   iot-client-1:
-    image: gi-hsp/iot-client:1.0
+    image: gi-hsp/iot-client:1.1
     container_name: iot-client-1
     restart: unless-stopped
     environment:
@@ -38,7 +38,7 @@ services:
         ipv4_address: 172.30.0.20
 
   iot-client-2:
-    image: gi-hsp/iot-client:1.0
+    image: gi-hsp/iot-client:1.1
     container_name: iot-client-2
     restart: unless-stopped
     environment:
@@ -51,6 +51,23 @@ services:
     networks:
       gi-hsp-net:
         ipv4_address: 172.30.0.21
+
+  iot-subscriber-1:
+    image: gi-hsp/iot-client:1.1
+    container_name: iot-subscriber-1
+    restart: unless-stopped
+    environment:
+      CLIENT_ID: iot-subscriber-1
+      CLIENT_ROLE: subscriber
+      MQTT_BROKER: mqtt-broker
+      MQTT_PORT: 1883
+      SUBSCRIBE_TOPIC: iot/#
+      PUBLISH_INTERVAL: 1
+    depends_on:
+      - mqtt-broker
+    networks:
+      gi-hsp-net:
+        ipv4_address: 172.30.0.30
 
 networks:
   gi-hsp-net:

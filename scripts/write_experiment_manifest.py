@@ -78,6 +78,13 @@ def main():
                 "broker": "mqtt-broker-2",
                 "publish_interval_seconds": 7,
             },
+            {
+                "container": "iot-subscriber-1",
+                "ip": "172.30.0.30",
+                "broker": "mqtt-broker",
+                "role": "subscriber",
+                "subscribe_topic": "iot/#",
+            },
         ],
         "capture": {
             "file": str(pcap_path),
@@ -115,7 +122,7 @@ def main():
                     "docker",
                     "image",
                     "inspect",
-                    "gi-hsp/iot-client:1.0",
+                    "gi-hsp/iot-client:1.1",
                     "--format",
                     "{{.Id}}",
                 ]),
