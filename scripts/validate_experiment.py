@@ -2,6 +2,7 @@ import argparse
 import csv
 import hashlib
 import json
+import math
 from pathlib import Path
 
 import yaml
@@ -414,6 +415,109 @@ def main():
                     "snapshot(s) are semantically invalid"
                 )
                 ok = False
+
+            measurement_start_ts = dynamic_graph.get(
+                "measurement_start_ts"
+            )
+
+            if (
+                mqtt_csv_path.exists()
+                and isinstance(measurement_start_ts, (int, float))
+                and isinstance(window_seconds, (int, float))
+                and window_seconds > 0
+                and isinstance(snapshot_count, int)
+                and snapshot_count >= 0
+            ):
+                expected_edges = {}
+                invalid_event_times = 0
+                analysis_end_ts = (
+                    measurement_start_ts
+                    + snapshot_count * window_seconds
+                )
+
+                for row in mqtt_rows:
+                    try:
+                        event_ts = float(row["ts"])
+                        payload_len = int(row["payload_len"])
+                    except (TypeError, ValueError, KeyError):
+                        continue
+
+                    if event_ts < measurement_start_ts:
+                        invalid_event_times += 1
+                        continue
+
+                    if event_ts >= analysis_end_ts:
+                        # Valid event in the intentionally discarded
+                        # incomplete trailing interval.
+                        continue
+
+                    window_index = int(
+                        math.floor(
+                            (
+                                event_ts
+                                - measurement_start_ts
+                            )
+                            / window_seconds
+                        )
+                    )
+
+                    if row["from_client"] == "T":
+                        source = row["id.orig_h"]
+                        target = row["id.resp_h"]
+                    else:
+                        source = row["id.resp_h"]
+                        target = row["id.orig_h"]
+
+                    key = (window_index, source, target)
+
+                    if key not in expected_edges:
+                        expected_edges[key] = {
+                            "event_count": 0,
+                            "payload_bytes": 0,
+                        }
+
+                    expected_edges[key]["event_count"] += 1
+                    expected_edges[key]["payload_bytes"] += (
+                        payload_len
+                    )
+
+                actual_edges = {}
+
+                for snapshot in snapshots:
+                    window_index = snapshot.get("window_index")
+
+                    for edge in snapshot.get("edges", []):
+                        key = (
+                            window_index,
+                            edge.get("source"),
+                            edge.get("target"),
+                        )
+                        actual_edges[key] = {
+                            "event_count": edge.get(
+                                "event_count"
+                            ),
+                            "payload_bytes": edge.get(
+                                "payload_bytes"
+                            ),
+                        }
+
+                if invalid_event_times:
+                    print(
+                        f"[FAIL] {invalid_event_times} MQTT "
+                        "event(s) occur before measurement start"
+                    )
+                    ok = False
+                elif actual_edges == expected_edges:
+                    print(
+                        "[OK]   Dynamic graph edge aggregates "
+                        "match MQTT publish CSV"
+                    )
+                else:
+                    print(
+                        "[FAIL] Dynamic graph edge aggregates "
+                        "do not match MQTT publish CSV"
+                    )
+                    ok = False
 
         except (json.JSONDecodeError, OSError) as exc:
             print(
