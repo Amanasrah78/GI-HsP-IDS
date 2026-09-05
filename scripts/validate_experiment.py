@@ -1,4 +1,5 @@
 import argparse
+import csv
 import hashlib
 import json
 from pathlib import Path
@@ -77,6 +78,70 @@ def main():
     else:
         print("[FAIL] Experiment ID mismatch")
         ok = False
+
+    if csv_path.exists():
+        try:
+            required_columns = {
+                "ts",
+                "uid",
+                "id.orig_h",
+                "id.orig_p",
+                "id.resp_h",
+                "id.resp_p",
+                "proto",
+                "service",
+                "duration",
+                "orig_bytes",
+                "resp_bytes",
+                "orig_pkts",
+                "resp_pkts",
+            }
+
+            with csv_path.open(
+                "r",
+                encoding="utf-8",
+                newline="",
+            ) as f:
+                reader = csv.DictReader(f)
+
+                columns = set(reader.fieldnames or [])
+                missing_columns = required_columns - columns
+
+                if not missing_columns:
+                    print("[OK]   Flow CSV contains required columns")
+                else:
+                    print(
+                        "[FAIL] Flow CSV missing columns: "
+                        + ", ".join(sorted(missing_columns))
+                    )
+                    ok = False
+
+                rows = list(reader)
+
+            if rows:
+                print(f"[OK]   Flow CSV contains {len(rows)} row(s)")
+            else:
+                print("[FAIL] Flow CSV contains no data rows")
+                ok = False
+
+            invalid_hosts = [
+                row
+                for row in rows
+                if not row.get("id.orig_h") or not row.get("id.resp_h")
+            ]
+
+            if not invalid_hosts:
+                print("[OK]   All flow rows contain endpoint hosts")
+            else:
+                print(
+                    f"[FAIL] {len(invalid_hosts)} flow row(s) "
+                    "have missing endpoint hosts"
+                )
+                ok = False
+
+        except (csv.Error, OSError) as exc:
+            print(f"[FAIL] Flow CSV invalid: {exc}")
+            ok = False
 
     if graph_path.exists():
         try:
