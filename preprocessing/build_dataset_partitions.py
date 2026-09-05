@@ -54,8 +54,9 @@ def partition_experiments(
         "seed": seed,
         "train_fraction": train_fraction,
         "validation_fraction": validation_fraction,
-        "test_fraction": (
-            1.0 - train_fraction - validation_fraction
+        "test_fraction": round(
+            1.0 - train_fraction - validation_fraction,
+            12,
         ),
         "partitions": {
             "train": shuffled[:train_count],
