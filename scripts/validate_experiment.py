@@ -226,6 +226,42 @@ def main():
                 )
                 ok = False
 
+            if csv_path.exists():
+                with csv_path.open(
+                    "r",
+                    encoding="utf-8",
+                    newline="",
+                ) as f:
+                    reader = csv.DictReader(f)
+                    flow_pairs = {
+                        (row["id.orig_h"], row["id.resp_h"])
+                        for row in reader
+                    }
+
+                graph_pairs = {
+                    (edge["source"], edge["target"])
+                    for edge in edges
+                    if (
+                        isinstance(edge, dict)
+                        and "source" in edge
+                        and "target" in edge
+                    )
+                }
+
+                missing_pairs = flow_pairs - graph_pairs
+
+                if not missing_pairs:
+                    print(
+                        "[OK]   All CSV flow endpoint pairs "
+                        "exist in graph"
+                    )
+                else:
+                    print(
+                        f"[FAIL] {len(missing_pairs)} CSV flow pair(s) "
+                        "missing from graph"
+                    )
+                    ok = False
+
         except (json.JSONDecodeError, OSError) as exc:
             print(f"[FAIL] Graph JSON invalid: {exc}")
             ok = False
