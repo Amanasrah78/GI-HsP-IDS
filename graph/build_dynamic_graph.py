@@ -61,8 +61,12 @@ def build_snapshots(
 
     output = []
 
+    total_duration = end_ts - start_ts
     window_count = int(
-        math.ceil((end_ts - start_ts) / window_seconds)
+        math.floor(total_duration / window_seconds)
+    )
+    discarded_trailing_seconds = (
+        total_duration - (window_count * window_seconds)
     )
 
     for window_index in range(window_count):
@@ -71,10 +75,7 @@ def build_snapshots(
         window_start = start_ts + (
             window_index * window_seconds
         )
-        window_end = min(
-            window_start + window_seconds,
-            end_ts,
-        )
+        window_end = window_start + window_seconds
 
         output.append({
             "window_index": window_index,
@@ -95,7 +96,7 @@ def build_snapshots(
             ],
         })
 
-    return output
+    return output, discarded_trailing_seconds
 
 
 def main():
@@ -119,7 +120,7 @@ def main():
     if end_ts <= start_ts:
         raise ValueError("end_ts must be greater than start_ts")
 
-    snapshots = build_snapshots(
+    snapshots, discarded_trailing_seconds = build_snapshots(
         csv_path,
         window_seconds,
         start_ts,
@@ -130,6 +131,9 @@ def main():
         "window_seconds": window_seconds,
         "measurement_start_ts": start_ts,
         "measurement_end_ts": end_ts,
+        "discarded_trailing_seconds": (
+            discarded_trailing_seconds
+        ),
         "snapshot_count": len(snapshots),
         "snapshots": snapshots,
     }
