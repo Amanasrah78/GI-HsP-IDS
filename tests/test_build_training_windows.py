@@ -4,7 +4,9 @@ import unittest
 from pathlib import Path
 
 from preprocessing.build_training_windows import (
+    build_stable_node_index,
     build_window_records,
+    encode_graph_snapshot,
     summarize_packet_window,
     validate_window_alignment,
     write_window_records,
@@ -155,6 +157,99 @@ class ValidateWindowAlignmentTests(unittest.TestCase):
             )
 
 
+class StableNodeIndexTests(unittest.TestCase):
+    def test_index_is_sorted_and_stable_across_windows(self):
+        graph_data = {
+            "snapshots": [
+                {
+                    "nodes": [
+                        {"id": "node-b"},
+                        {"id": "node-a"},
+                    ],
+                    "edges": [{
+                        "source": "node-b",
+                        "target": "node-a",
+                    }],
+                },
+                {
+                    "nodes": [
+                        {"id": "node-c"},
+                        {"id": "node-b"},
+                    ],
+                    "edges": [{
+                        "source": "node-c",
+                        "target": "node-b",
+                    }],
+                },
+            ],
+        }
+
+        node_index = build_stable_node_index(graph_data)
+
+        self.assertEqual(
+            node_index,
+            {
+                "node-a": 0,
+                "node-b": 1,
+                "node-c": 2,
+            },
+        )
+
+    def test_rejects_edge_with_missing_node(self):
+        graph_data = {
+            "snapshots": [{
+                "nodes": [{"id": "node-a"}],
+                "edges": [{
+                    "source": "node-a",
+                    "target": "node-missing",
+                }],
+            }],
+        }
+
+        with self.assertRaises(ValueError):
+            build_stable_node_index(graph_data)
+
+
+class EncodeGraphSnapshotTests(unittest.TestCase):
+    def test_encodes_structure_without_raw_identifiers(self):
+        snapshot = {
+            "nodes": [
+                {"id": "192.0.2.20"},
+                {"id": "192.0.2.10"},
+            ],
+            "edges": [{
+                "source": "192.0.2.20",
+                "target": "192.0.2.10",
+                "event_count": 3,
+                "payload_bytes": 75,
+            }],
+        }
+        node_index = {
+            "192.0.2.10": 0,
+            "192.0.2.20": 1,
+        }
+
+        encoded = encode_graph_snapshot(
+            snapshot,
+            node_index,
+        )
+
+        self.assertEqual(encoded, {
+            "node_count": 2,
+            "active_node_indices": [0, 1],
+            "edges": [{
+                "source_index": 1,
+                "target_index": 0,
+                "event_count": 3,
+                "payload_bytes": 75,
+            }],
+        })
+        self.assertNotIn(
+            "192.0.2.",
+            json.dumps(encoded),
+        )
+
+
 class WindowRecordSerializationTests(unittest.TestCase):
     def setUp(self):
         self.graph_data = {
@@ -192,9 +287,15 @@ class WindowRecordSerializationTests(unittest.TestCase):
                 "start_ts",
                 "end_ts",
                 "packet_features",
+                "graph",
                 "label",
             },
         )
+        self.assertEqual(records[0]["graph"], {
+            "node_count": 1,
+            "active_node_indices": [0],
+            "edges": [],
+        })
         self.assertNotIn(
             "192.0.2.10",
             json.dumps(records),

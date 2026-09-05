@@ -124,6 +124,62 @@ def validate_window_alignment(
             )
 
 
+def build_stable_node_index(graph_data):
+    node_ids = set()
+
+    for snapshot in graph_data["snapshots"]:
+        snapshot_node_ids = {
+            node["id"]
+            for node in snapshot["nodes"]
+        }
+
+        for edge in snapshot["edges"]:
+            if (
+                edge["source"] not in snapshot_node_ids
+                or edge["target"] not in snapshot_node_ids
+            ):
+                raise ValueError(
+                    "Graph edge references a node that is "
+                    "absent from its snapshot"
+                )
+
+        node_ids.update(snapshot_node_ids)
+
+    return {
+        node_id: index
+        for index, node_id in enumerate(
+            sorted(node_ids)
+        )
+    }
+
+
+def encode_graph_snapshot(snapshot, node_index):
+    edges = [
+        {
+            "source_index": node_index[edge["source"]],
+            "target_index": node_index[edge["target"]],
+            "event_count": int(edge["event_count"]),
+            "payload_bytes": int(edge["payload_bytes"]),
+        }
+        for edge in snapshot["edges"]
+    ]
+    edges.sort(
+        key=lambda edge: (
+            edge["source_index"],
+            edge["target_index"],
+        )
+    )
+
+    return {
+        "node_count": len(node_index),
+        "active_node_indices": sorted(
+            node_index[node["id"]]
+            for node in snapshot["nodes"]
+        ),
+        "edges": edges,
+    }
+
+
 def build_window_records(
     experiment_id,
     graph_data,
@@ -131,6 +187,7 @@ def build_window_records(
     label,
 ):
     records = []
+    node_index = build_stable_node_index(graph_data)
 
     for snapshot, packet_features in zip(
         graph_data["snapshots"],
@@ -142,6 +199,10 @@ def build_window_records(
             "start_ts": snapshot["start_ts"],
             "end_ts": snapshot["end_ts"],
             "packet_features": packet_features,
+            "graph": encode_graph_snapshot(
+                snapshot,
+                node_index,
+            ),
             "label": label,
         })
 
