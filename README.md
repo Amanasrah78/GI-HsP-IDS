@@ -83,6 +83,14 @@ Each window record also contains a `graph` object with:
 - `active_node_indices`, the nodes active in the current window.
 - `edges`, containing `source_index`, `target_index`,
   `event_count`, and `payload_bytes`.
+- `node_features`, an ordered feature vector for each stable node index.
+  Each node contains `active`, `in_neighbor_count`,
+  `out_neighbor_count`, `in_event_count`, `out_event_count`,
+  `in_payload_bytes`, and `out_payload_bytes`.
+
+The node-local features are identifier-free. Neighbor counts use
+distinct directed neighbors, while event and payload fields aggregate
+the directed edges incident on each node within the current window.
 
 Node indices are generated once per experiment and remain stable
 across its windows. This preserves temporal node correspondence.
