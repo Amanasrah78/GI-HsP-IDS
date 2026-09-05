@@ -48,3 +48,32 @@ def validate_hsp_label(label, taxonomy=None):
         raise ValueError(
             "HsP family does not belong to attack goal"
         )
+
+
+def validate_attack_provenance(label, provenance):
+    label_class = label.get("class")
+    attacker_container = provenance.get("attacker_container")
+    attack_command = provenance.get("attack_command")
+
+    if label_class == "benign":
+        if provenance != {
+            "attacker_container": "none",
+            "attack_command": "none",
+        }:
+            raise ValueError(
+                "Benign experiment must not define attack provenance"
+            )
+        return
+
+    if label_class != "attack":
+        raise ValueError("Unsupported label class")
+
+    if not attacker_container or attacker_container == "none":
+        raise ValueError(
+            "Attack experiment requires attacker container provenance"
+        )
+
+    if not attack_command or attack_command == "none":
+        raise ValueError(
+            "Attack experiment requires attack command provenance"
+        )

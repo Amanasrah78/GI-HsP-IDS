@@ -27,7 +27,7 @@ from preprocessing.build_training_sequences import (
     validate_sequence_records,
     validate_window_records,
 )
-from hsp.taxonomy import validate_hsp_label
+from hsp.taxonomy import validate_attack_provenance, validate_hsp_label
 
 
 def validate_packet_rows(columns, rows):
@@ -292,8 +292,14 @@ def main():
     try:
         validate_hsp_label(manifest["label"])
         print("[OK]   Manifest label matches HsP taxonomy")
+
+        validate_attack_provenance(
+            manifest["label"],
+            manifest["attack_provenance"],
+        )
+        print("[OK]   Manifest attack provenance is consistent")
     except (KeyError, TypeError, ValueError) as exc:
-        print(f"[FAIL] Manifest label invalid: {exc}")
+        print(f"[FAIL] Manifest label/provenance invalid: {exc}")
         ok = False
 
     actual_hash = sha256_file(pcap_path)

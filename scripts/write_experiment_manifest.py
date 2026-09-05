@@ -33,6 +33,8 @@ def main():
     parser.add_argument("--class", dest="label_class", default="benign")
     parser.add_argument("--attack-goal", default="none")
     parser.add_argument("--hsp-family", default="none")
+    parser.add_argument("--attacker-container", default="none")
+    parser.add_argument("--attack-command", default="none")
     args = parser.parse_args()
 
     pcap_path = Path(args.pcap_file)
@@ -49,6 +51,10 @@ def main():
             "class": args.label_class,
             "attack_goal": args.attack_goal,
             "hsp_family": args.hsp_family,
+        },
+        "attack_provenance": {
+            "attacker_container": args.attacker_container,
+            "attack_command": args.attack_command,
         },
         "network": {
             "name": "gi-hsp-net",

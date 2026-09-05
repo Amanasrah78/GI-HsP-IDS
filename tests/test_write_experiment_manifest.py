@@ -19,6 +19,8 @@ class WriteExperimentManifestTests(unittest.TestCase):
         self.assertIn("--class", result.stdout)
         self.assertIn("--attack-goal", result.stdout)
         self.assertIn("--hsp-family", result.stdout)
+        self.assertIn("--attacker-container", result.stdout)
+        self.assertIn("--attack-command", result.stdout)
 
 
 if __name__ == "__main__":
