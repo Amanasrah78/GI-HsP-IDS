@@ -151,6 +151,20 @@ Dataset partitions must be assigned by complete experiment before
 overlapping sequences are used for model training. Splitting individual
 sequences would place shared windows in different partitions.
 
+Use the deterministic experiment-level partitioner to assign complete
+experiments to train, validation, and test sets:
+
+```bash
+python3 preprocessing/build_dataset_partitions.py \
+  <experiment_id_1> <experiment_id_2> <experiment_id_3> ... \
+  --seed 0 \
+  --output datasets/processed/partitions.json
+```
+
+The default requested fractions are 0.70 train, 0.15 validation, and
+0.15 test. At least three experiment IDs are required, and every
+experiment is assigned to exactly one partition.
+
 ## Predictive-feature boundary
 
 Only values nested under `packet_features` belong to the packet
