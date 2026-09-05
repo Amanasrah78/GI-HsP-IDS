@@ -30,6 +30,9 @@ def main():
     parser.add_argument("--duration", type=int, required=True)
     parser.add_argument("--timing-file", required=True)
     parser.add_argument("--output", required=True)
+    parser.add_argument("--class", dest="label_class", default="benign")
+    parser.add_argument("--attack-goal", default="none")
+    parser.add_argument("--hsp-family", default="none")
     args = parser.parse_args()
 
     pcap_path = Path(args.pcap_file)
@@ -43,9 +46,9 @@ def main():
         "experiment_id": args.experiment_id,
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "label": {
-            "class": "benign",
-            "attack_goal": "none",
-            "hsp_family": "none",
+            "class": args.label_class,
+            "attack_goal": args.attack_goal,
+            "hsp_family": args.hsp_family,
         },
         "network": {
             "name": "gi-hsp-net",
