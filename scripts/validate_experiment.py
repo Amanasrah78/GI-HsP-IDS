@@ -16,6 +16,9 @@ if str(PROJECT_ROOT) not in sys.path:
 from preprocessing.tshark_packets_to_csv import (
     FIELDS as PACKET_FIELDS,
 )
+from preprocessing.build_training_windows import (
+    summarize_graph_nodes,
+)
 from preprocessing.build_training_sequences import (
     DEFAULT_SEQUENCE_LENGTH,
     DEFAULT_SEQUENCE_STRIDE,
@@ -150,13 +153,39 @@ def validate_training_windows(
                 "Window boundary does not match dynamic graph"
             )
 
-        if (
-            record["graph"]["node_count"]
-            != expected_node_count
-        ):
+        encoded_graph = record["graph"]
+
+        if encoded_graph["node_count"] != expected_node_count:
             raise ValueError(
                 "Encoded graph node count does not match "
                 "dynamic graph"
+            )
+
+        node_features = encoded_graph.get("node_features")
+
+        if not isinstance(node_features, list):
+            raise ValueError(
+                "Encoded graph node features are missing or invalid"
+            )
+
+        if len(node_features) != expected_node_count:
+            raise ValueError(
+                "Encoded graph node feature count does not match "
+                "node count"
+            )
+
+        expected_node_features = summarize_graph_nodes({
+            "node_count": encoded_graph["node_count"],
+            "active_node_indices": encoded_graph[
+                "active_node_indices"
+            ],
+            "edges": encoded_graph["edges"],
+        })
+
+        if node_features != expected_node_features:
+            raise ValueError(
+                "Encoded graph node features do not match "
+                "encoded graph topology"
             )
 
 

@@ -60,6 +60,26 @@ def make_records(count=2):
                 "node_count": 2,
                 "active_node_indices": [0],
                 "edges": [],
+                "node_features": [
+                    {
+                        "active": 1,
+                        "in_neighbor_count": 0,
+                        "out_neighbor_count": 0,
+                        "in_event_count": 0,
+                        "out_event_count": 0,
+                        "in_payload_bytes": 0,
+                        "out_payload_bytes": 0,
+                    },
+                    {
+                        "active": 0,
+                        "in_neighbor_count": 0,
+                        "out_neighbor_count": 0,
+                        "in_event_count": 0,
+                        "out_event_count": 0,
+                        "in_payload_bytes": 0,
+                        "out_payload_bytes": 0,
+                    },
+                ],
             },
             "label": LABEL,
         })
@@ -218,6 +238,39 @@ class ValidateTrainingWindowsTests(unittest.TestCase):
         with self.assertRaisesRegex(
             ValueError,
             "node count",
+        ):
+            validate_training_windows(
+                records,
+                "experiment-001",
+                LABEL,
+                make_dynamic_graph(),
+            )
+
+
+    def test_rejects_missing_node_features(self):
+        records = make_records()
+        del records[0]["graph"]["node_features"]
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "node features",
+        ):
+            validate_training_windows(
+                records,
+                "experiment-001",
+                LABEL,
+                make_dynamic_graph(),
+            )
+
+    def test_rejects_inconsistent_node_features(self):
+        records = make_records()
+        records[0]["graph"]["node_features"][0][
+            "out_event_count"
+        ] = 1
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "topology",
         ):
             validate_training_windows(
                 records,
