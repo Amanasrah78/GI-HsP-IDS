@@ -38,7 +38,9 @@ results/processed/<experiment_id>.windows.jsonl
 Each JSONL line represents one non-overlapping dynamic-graph window
 and contains:
 
+- `schema_version`, for compatibility checks.
 - `experiment_id`, for provenance.
+- `window_seconds`, for window-size compatibility.
 - `window_index`, `start_ts`, and `end_ts`, for alignment metadata.
 - `packet_features`, containing the predictive packet aggregates.
 - `label`, containing the supervised targets.
@@ -103,7 +105,9 @@ branch's predictive vector.
 The following fields are metadata or targets and must not be supplied
 as predictive inputs:
 
+- `schema_version`
 - `experiment_id`
+- `window_seconds`
 - `window_index`
 - `start_ts`
 - `end_ts`
