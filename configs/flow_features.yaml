@@ -1,0 +1,29 @@
+numeric_features:
+  - duration
+  - orig_bytes
+  - resp_bytes
+  - missed_bytes
+  - orig_pkts
+  - orig_ip_bytes
+  - resp_pkts
+  - resp_ip_bytes
+
+categorical_features:
+  - proto
+  - service
+  - conn_state
+  - history
+  - local_orig
+  - local_resp
+
+identity_only:
+  - uid
+  - id.orig_h
+  - id.orig_p
+  - id.resp_h
+  - id.resp_p
+  - ts
+
+excluded_from_prediction:
+  - tunnel_parents
+  - ip_proto
