@@ -8,6 +8,7 @@ COMPOSE_FILE="docker/mqtt/compose.yml"
 INTERFACE="br-c73cfc820324"
 PCAP_FILE="capture/pcap/${EXPERIMENT_ID}.pcap"
 HASH_FILE="capture/pcap/${EXPERIMENT_ID}.sha256"
+TIMING_FILE="capture/pcap/${EXPERIMENT_ID}.timing.json"
 
 echo "Experiment : $EXPERIMENT_ID"
 echo "Duration   : ${DURATION}s"
@@ -28,7 +29,7 @@ trap cleanup EXIT INT TERM
 
 docker compose -f "$COMPOSE_FILE" stop     iot-client-1 iot-client-2 iot-subscriber-1
 
-rm -f "$PCAP_FILE" "$HASH_FILE"
+rm -f "$PCAP_FILE" "$HASH_FILE" "$TIMING_FILE"
 
 # Authenticate sudo before launching tcpdump in the background.
 sudo -v
@@ -46,7 +47,38 @@ sleep 2
 
 docker compose -f "$COMPOSE_FILE" start     iot-subscriber-1 iot-client-1 iot-client-2
 
+MEASUREMENT_START_TS="$(date +%s.%N)"
+
 sleep "$DURATION"
+
+MEASUREMENT_END_TS="$(date +%s.%N)"
+
+python3 - "$TIMING_FILE"     "$MEASUREMENT_START_TS"     "$MEASUREMENT_END_TS" <<'PYTIMING'
+import json
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+output = Path(sys.argv[1])
+start_ts = float(sys.argv[2])
+end_ts = float(sys.argv[3])
+
+data = {
+    "measurement_start_ts": start_ts,
+    "measurement_end_ts": end_ts,
+    "measurement_start_utc": datetime.fromtimestamp(
+        start_ts, tz=timezone.utc
+    ).isoformat(),
+    "measurement_end_utc": datetime.fromtimestamp(
+        end_ts, tz=timezone.utc
+    ).isoformat(),
+}
+
+output.write_text(
+    json.dumps(data, indent=2) + "\n",
+    encoding="utf-8",
+)
+PYTIMING
 
 # End the measurement window before stopping application containers.
 sudo kill -INT "$TCPDUMP_PID"
