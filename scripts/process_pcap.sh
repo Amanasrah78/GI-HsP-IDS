@@ -14,6 +14,15 @@ CSV_FILE="results/processed/${EXPERIMENT_ID}.csv"
 MQTT_CSV_FILE="results/processed/${EXPERIMENT_ID}.mqtt_publish.csv"
 GRAPH_FILE="graph/output/${EXPERIMENT_ID}.json"
 DYNAMIC_GRAPH_FILE="graph/output/${EXPERIMENT_ID}.dynamic.json"
+TIMING_FILE="capture/pcap/${EXPERIMENT_ID}.timing.json"
+
+if [ ! -f "$TIMING_FILE" ]; then
+    echo "ERROR: Missing timing file: $TIMING_FILE"
+    exit 1
+fi
+
+MEASUREMENT_START_TS="$(jq -r '.measurement_start_ts' "$TIMING_FILE")"
+MEASUREMENT_END_TS="$(jq -r '.measurement_end_ts' "$TIMING_FILE")"
 
 echo "[1/5] Running Zeek..."
 rm -rf "$ZEEK_DIR"
@@ -38,6 +47,8 @@ echo "[5/5] Building 5-second dynamic graph..."
 python3 graph/build_dynamic_graph.py \
     "$MQTT_CSV_FILE" \
     5 \
+    "$MEASUREMENT_START_TS" \
+    "$MEASUREMENT_END_TS" \
     "$DYNAMIC_GRAPH_FILE"
 
 echo

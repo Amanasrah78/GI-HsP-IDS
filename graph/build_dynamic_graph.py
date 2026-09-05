@@ -6,7 +6,12 @@ from collections import defaultdict
 from pathlib import Path
 
 
-def build_snapshots(csv_path: Path, window_seconds: float):
+def build_snapshots(
+    csv_path: Path,
+    window_seconds: float,
+    start_ts: float,
+    end_ts: float,
+):
     events = []
 
     with csv_path.open(newline="", encoding="utf-8") as f:
@@ -29,10 +34,6 @@ def build_snapshots(csv_path: Path, window_seconds: float):
                 "payload_len": int(row["payload_len"] or 0),
             })
 
-    if not events:
-        return []
-
-    start_ts = min(event["ts"] for event in events)
     snapshots = defaultdict(lambda: {
         "nodes": set(),
         "edges": defaultdict(lambda: {
@@ -60,13 +61,20 @@ def build_snapshots(csv_path: Path, window_seconds: float):
 
     output = []
 
-    for window_index in sorted(snapshots):
+    window_count = int(
+        math.ceil((end_ts - start_ts) / window_seconds)
+    )
+
+    for window_index in range(window_count):
         snapshot = snapshots[window_index]
 
         window_start = start_ts + (
             window_index * window_seconds
         )
-        window_end = window_start + window_seconds
+        window_end = min(
+            window_start + window_seconds,
+            end_ts,
+        )
 
         output.append({
             "window_index": window_index,
@@ -91,27 +99,37 @@ def build_snapshots(csv_path: Path, window_seconds: float):
 
 
 def main():
-    if len(sys.argv) != 4:
+    if len(sys.argv) != 6:
         print(
             "Usage: python3 graph/build_dynamic_graph.py "
-            "<mqtt_publish.csv> <window_seconds> <output.json>"
+            "<mqtt_publish.csv> <window_seconds> "
+            "<start_ts> <end_ts> <output.json>"
         )
         sys.exit(1)
 
     csv_path = Path(sys.argv[1])
     window_seconds = float(sys.argv[2])
-    output_path = Path(sys.argv[3])
+    start_ts = float(sys.argv[3])
+    end_ts = float(sys.argv[4])
+    output_path = Path(sys.argv[5])
 
     if window_seconds <= 0:
         raise ValueError("window_seconds must be > 0")
 
+    if end_ts <= start_ts:
+        raise ValueError("end_ts must be greater than start_ts")
+
     snapshots = build_snapshots(
         csv_path,
         window_seconds,
+        start_ts,
+        end_ts,
     )
 
     output = {
         "window_seconds": window_seconds,
+        "measurement_start_ts": start_ts,
+        "measurement_end_ts": end_ts,
         "snapshot_count": len(snapshots),
         "snapshots": snapshots,
     }

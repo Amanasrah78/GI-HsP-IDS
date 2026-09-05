@@ -45,9 +45,9 @@ TCPDUMP_PID=$!
 
 sleep 2
 
-docker compose -f "$COMPOSE_FILE" start     iot-subscriber-1 iot-client-1 iot-client-2
-
 MEASUREMENT_START_TS="$(date +%s.%N)"
+
+docker compose -f "$COMPOSE_FILE" start     iot-subscriber-1 iot-client-1 iot-client-2
 
 sleep "$DURATION"
 
