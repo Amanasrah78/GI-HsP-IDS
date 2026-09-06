@@ -72,6 +72,8 @@ def evaluate_model(
     total_loss = 0.0
     total_correct = 0
     total_samples = 0
+    total_targets = []
+    total_predictions = []
 
     with torch.no_grad():
         for batch in data_loader:
@@ -90,16 +92,65 @@ def evaluate_model(
             batch_size = batch["targets"].shape[0]
 
             total_loss += loss.item() * batch_size
+            predictions = logits.argmax(dim=1)
+
             total_correct += (
-                logits.argmax(dim=1) == batch["targets"]
+                predictions == batch["targets"]
             ).sum().item()
             total_samples += batch_size
+
+            total_targets.extend(batch["targets"].cpu().tolist())
+            total_predictions.extend(predictions.cpu().tolist())
 
     if total_samples == 0:
         raise ValueError("Evaluation loader contains no samples")
 
+    true_negative = sum(
+        target == 0 and prediction == 0
+        for target, prediction in zip(total_targets, total_predictions)
+    )
+    false_positive = sum(
+        target == 0 and prediction == 1
+        for target, prediction in zip(total_targets, total_predictions)
+    )
+    false_negative = sum(
+        target == 1 and prediction == 0
+        for target, prediction in zip(total_targets, total_predictions)
+    )
+    true_positive = sum(
+        target == 1 and prediction == 1
+        for target, prediction in zip(total_targets, total_predictions)
+    )
+
+    precision_denominator = true_positive + false_positive
+    recall_denominator = true_positive + false_negative
+
+    precision = (
+        true_positive / precision_denominator
+        if precision_denominator
+        else 0.0
+    )
+    recall = (
+        true_positive / recall_denominator
+        if recall_denominator
+        else 0.0
+    )
+
+    f1 = (
+        2.0 * precision * recall / (precision + recall)
+        if precision + recall
+        else 0.0
+    )
+
     return {
         "loss": total_loss / total_samples,
         "accuracy": total_correct / total_samples,
+        "precision": precision,
+        "recall": recall,
+        "f1": f1,
+        "confusion_matrix": [
+            [true_negative, false_positive],
+            [false_negative, true_positive],
+        ],
         "sample_count": total_samples,
     }
