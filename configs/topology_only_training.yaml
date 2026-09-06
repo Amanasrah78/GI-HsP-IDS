@@ -9,7 +9,7 @@ data:
   num_workers: 0
 
 model:
-  name: gi_hsp
+  name: topology_only
   flow_dim: 64
   topology_dim: 64
   fusion_dim: 64
@@ -23,4 +23,4 @@ optimizer:
 
 training:
   epochs: 25
-  checkpoint_directory: results/checkpoints
+  checkpoint_directory: results/checkpoints/topology_only
