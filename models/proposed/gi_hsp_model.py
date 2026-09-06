@@ -62,9 +62,10 @@ class GIHSPModel(nn.Module):
             node_mask=node_mask,
         )
 
-        fused_embedding = self.fusion(
+        fused_embedding, fusion_gate = self.fusion(
             flow_embedding,
             topology_embedding,
+            return_gate=True,
         )
 
         logits = self.classifier(
@@ -76,4 +77,5 @@ class GIHSPModel(nn.Module):
             "flow_embedding": flow_embedding,
             "topology_embedding": topology_embedding,
             "fused_embedding": fused_embedding,
+            "fusion_gate": fusion_gate,
         }

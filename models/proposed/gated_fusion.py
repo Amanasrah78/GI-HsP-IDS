@@ -34,6 +34,7 @@ class GatedCrossViewFusion(nn.Module):
         self,
         flow_embedding,
         topology_embedding,
+        return_gate=False,
     ):
         if flow_embedding.ndim != 2:
             raise ValueError(
@@ -77,5 +78,9 @@ class GatedCrossViewFusion(nn.Module):
         )
 
         fused = self.dropout(fused)
+        fused = self.output_norm(fused)
 
-        return self.output_norm(fused)
+        if return_gate:
+            return fused, gate
+
+        return fused

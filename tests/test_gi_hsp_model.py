@@ -73,6 +73,16 @@ class GIHSPModelTests(unittest.TestCase):
             tuple(outputs["fused_embedding"].shape),
             (3, 24),
         )
+        self.assertEqual(
+            tuple(outputs["fusion_gate"].shape),
+            (3, 24),
+        )
+        self.assertTrue(
+            torch.all(outputs["fusion_gate"] >= 0.0)
+        )
+        self.assertTrue(
+            torch.all(outputs["fusion_gate"] <= 1.0)
+        )
 
     def test_backward_reaches_all_branches(self):
         model = GIHSPModel(

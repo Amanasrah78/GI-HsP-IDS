@@ -77,5 +77,28 @@ class GatedCrossViewFusionTests(unittest.TestCase):
         )
 
 
+    def test_can_return_gate_for_diagnostics(self):
+        model = GatedCrossViewFusion(
+            flow_dim=32,
+            topology_dim=48,
+            fusion_dim=24,
+            dropout=0.0,
+        )
+
+        flow = torch.randn(4, 32)
+        topology = torch.randn(4, 48)
+
+        output, gate = model(
+            flow,
+            topology,
+            return_gate=True,
+        )
+
+        self.assertEqual(tuple(output.shape), (4, 24))
+        self.assertEqual(tuple(gate.shape), (4, 24))
+        self.assertTrue(torch.all(gate >= 0.0))
+        self.assertTrue(torch.all(gate <= 1.0))
+
+
 if __name__ == "__main__":
     unittest.main()
