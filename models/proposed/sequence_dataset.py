@@ -66,6 +66,65 @@ def compute_packet_feature_statistics(
     }
 
 
+def compute_node_feature_statistics(
+    partition_path,
+    sequence_directory="results/processed",
+):
+    partitions = load_partitions(partition_path)
+
+    unique_windows = {}
+
+    for experiment_id in partitions["partitions"]["train"]:
+        records = load_experiment_sequences(
+            experiment_id,
+            sequence_directory,
+        )
+
+        for record in records:
+            assembled = assemble_sequence_inputs(record)
+
+            for step, node_features in zip(
+                record["steps"],
+                assembled["node_features"],
+            ):
+                key = (
+                    experiment_id,
+                    int(step["window_index"]),
+                )
+                unique_windows[key] = node_features
+
+    if not unique_windows:
+        raise ValueError("Training split contains no node features")
+
+    rows = [
+        node
+        for window_nodes in unique_windows.values()
+        for node in window_nodes
+    ]
+
+    values = torch.tensor(
+        rows,
+        dtype=torch.float32,
+    )
+
+    mean = values.mean(dim=0)
+    std = values.std(
+        dim=0,
+        unbiased=False,
+    )
+
+    std = torch.where(
+        std > 0,
+        std,
+        torch.ones_like(std),
+    )
+
+    return {
+        "mean": mean,
+        "std": std,
+    }
+
+
 def load_partitions(path):
     with Path(path).open("r", encoding="utf-8") as handle:
         partitions = json.load(handle)
@@ -141,6 +200,7 @@ class GIHSPSequenceDataset(Dataset):
         split,
         sequence_directory="results/processed",
         packet_feature_statistics=None,
+        node_feature_statistics=None,
     ):
         partitions = load_partitions(partition_path)
 
@@ -149,6 +209,7 @@ class GIHSPSequenceDataset(Dataset):
 
         self.split = split
         self.packet_feature_statistics = packet_feature_statistics
+        self.node_feature_statistics = node_feature_statistics
         self.records = []
 
         for experiment_id in partitions["partitions"][split]:
@@ -187,9 +248,24 @@ class GIHSPSequenceDataset(Dataset):
                 packet_features - mean
             ) / std
 
+        node_features = tensors["node_features"].squeeze(0)
+
+        if self.node_feature_statistics is not None:
+            mean = self.node_feature_statistics["mean"].to(
+                dtype=node_features.dtype,
+                device=node_features.device,
+            )
+            std = self.node_feature_statistics["std"].to(
+                dtype=node_features.dtype,
+                device=node_features.device,
+            )
+            node_features = (
+                node_features - mean
+            ) / std
+
         return {
             "packet_features": packet_features,
-            "node_features": tensors["node_features"].squeeze(0),
+            "node_features": node_features,
             "adjacency": tensors["adjacency"].squeeze(0),
             "target": encode_class_label(record["label"]),
             "label": record["label"],

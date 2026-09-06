@@ -11,6 +11,7 @@ from models.proposed.model_factory import build_model
 from models.proposed.sequence_batching import collate_gi_hsp_sequences
 from models.proposed.sequence_dataset import (
     GIHSPSequenceDataset,
+    compute_node_feature_statistics,
     compute_packet_feature_statistics,
 )
 from models.proposed.training import evaluate_model, train_one_epoch
@@ -138,18 +139,24 @@ def main():
         data_config["partition_path"],
         sequence_directory=data_config["sequence_directory"],
     )
+    node_feature_statistics = compute_node_feature_statistics(
+        data_config["partition_path"],
+        sequence_directory=data_config["sequence_directory"],
+    )
 
     train_dataset = GIHSPSequenceDataset(
         data_config["partition_path"],
         "train",
         sequence_directory=data_config["sequence_directory"],
         packet_feature_statistics=packet_feature_statistics,
+        node_feature_statistics=node_feature_statistics,
     )
     validation_dataset = GIHSPSequenceDataset(
         data_config["partition_path"],
         "validation",
         sequence_directory=data_config["sequence_directory"],
         packet_feature_statistics=packet_feature_statistics,
+        node_feature_statistics=node_feature_statistics,
     )
 
     test_dataset = GIHSPSequenceDataset(
@@ -157,6 +164,7 @@ def main():
         "test",
         sequence_directory=data_config["sequence_directory"],
         packet_feature_statistics=packet_feature_statistics,
+        node_feature_statistics=node_feature_statistics,
     )
 
     train_loader = build_data_loader(

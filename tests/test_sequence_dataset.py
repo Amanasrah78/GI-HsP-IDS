@@ -5,6 +5,7 @@ from pathlib import Path
 
 from models.proposed.sequence_dataset import (
     GIHSPSequenceDataset,
+    compute_node_feature_statistics,
     compute_packet_feature_statistics,
     load_partitions,
 )
@@ -255,6 +256,87 @@ class SequenceDatasetTests(unittest.TestCase):
             )
             self.assertAlmostEqual(
                 combined.std(unbiased=False).item(),
+                1.0,
+                places=6,
+            )
+
+
+    def test_node_feature_statistics_normalize_training_data(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            sequence_dir = root / "sequences"
+            sequence_dir.mkdir()
+
+            first = self.make_sequence_record("train-a", "benign")
+            second = self.make_sequence_record("train-b", "attack")
+
+            for step in first["steps"]:
+                for node in step["graph"]["node_features"]:
+                    node["out_payload_bytes"] = 10
+
+            for step in second["steps"]:
+                for node in step["graph"]["node_features"]:
+                    node["out_payload_bytes"] = 30
+
+            for record in (first, second):
+                output = (
+                    sequence_dir
+                    / f"{record['experiment_id']}.sequences.jsonl"
+                )
+                with output.open("w", encoding="utf-8") as handle:
+                    json.dump(record, handle)
+                    handle.write("\n")
+
+            self.write_sequence_file(
+                sequence_dir,
+                "validation-exp",
+                "benign",
+            )
+            self.write_sequence_file(
+                sequence_dir,
+                "test-exp",
+                "attack",
+            )
+
+            partition_path = root / "partitions.json"
+            partition_path.write_text(
+                json.dumps({
+                    "schema_version": 1,
+                    "partitions": {
+                        "train": ["train-a", "train-b"],
+                        "validation": ["validation-exp"],
+                        "test": ["test-exp"],
+                    },
+                }),
+                encoding="utf-8",
+            )
+
+            statistics = compute_node_feature_statistics(
+                partition_path,
+                sequence_directory=sequence_dir,
+            )
+
+            train_dataset = GIHSPSequenceDataset(
+                partition_path,
+                "train",
+                sequence_directory=sequence_dir,
+                node_feature_statistics=statistics,
+            )
+
+            import torch
+
+            values = torch.cat([
+                item["node_features"][:, :, 6].reshape(-1)
+                for item in train_dataset
+            ])
+
+            self.assertAlmostEqual(
+                values.mean().item(),
+                0.0,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                values.std(unbiased=False).item(),
                 1.0,
                 places=6,
             )
