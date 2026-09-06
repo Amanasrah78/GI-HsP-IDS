@@ -1,3 +1,5 @@
+import math
+
 import torch
 from torch import nn
 
@@ -124,6 +126,7 @@ def evaluate_model(
 
     precision_denominator = true_positive + false_positive
     recall_denominator = true_positive + false_negative
+    specificity_denominator = true_negative + false_positive
 
     precision = (
         true_positive / precision_denominator
@@ -135,10 +138,36 @@ def evaluate_model(
         if recall_denominator
         else 0.0
     )
+    specificity = (
+        true_negative / specificity_denominator
+        if specificity_denominator
+        else 0.0
+    )
 
     f1 = (
         2.0 * precision * recall / (precision + recall)
         if precision + recall
+        else 0.0
+    )
+
+    balanced_accuracy = (
+        recall + specificity
+    ) / 2.0
+
+    mcc_denominator = math.sqrt(
+        (true_positive + false_positive)
+        * (true_positive + false_negative)
+        * (true_negative + false_positive)
+        * (true_negative + false_negative)
+    )
+
+    mcc = (
+        (
+            true_positive * true_negative
+            - false_positive * false_negative
+        )
+        / mcc_denominator
+        if mcc_denominator
         else 0.0
     )
 
@@ -148,6 +177,9 @@ def evaluate_model(
         "precision": precision,
         "recall": recall,
         "f1": f1,
+        "specificity": specificity,
+        "balanced_accuracy": balanced_accuracy,
+        "mcc": mcc,
         "confusion_matrix": [
             [true_negative, false_positive],
             [false_negative, true_positive],

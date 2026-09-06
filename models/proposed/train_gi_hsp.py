@@ -238,6 +238,9 @@ def main():
         f"test_precision={test_metrics['precision']:.6f} "
         f"test_recall={test_metrics['recall']:.6f} "
         f"test_f1={test_metrics['f1']:.6f} "
+        f"test_specificity={test_metrics['specificity']:.6f} "
+        f"test_balanced_accuracy={test_metrics['balanced_accuracy']:.6f} "
+        f"test_mcc={test_metrics['mcc']:.6f} "
         f"test_confusion_matrix={test_metrics['confusion_matrix']} "
         f"test_sample_count={test_metrics['sample_count']}"
     )

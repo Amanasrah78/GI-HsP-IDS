@@ -69,6 +69,12 @@ class TrainingMetricTests(unittest.TestCase):
         self.assertAlmostEqual(metrics["precision"], 2 / 3)
         self.assertAlmostEqual(metrics["recall"], 2 / 3)
         self.assertAlmostEqual(metrics["f1"], 2 / 3)
+        self.assertAlmostEqual(metrics["specificity"], 1 / 2)
+        self.assertAlmostEqual(
+            metrics["balanced_accuracy"],
+            7 / 12,
+        )
+        self.assertAlmostEqual(metrics["mcc"], 1 / 6)
         self.assertEqual(
             metrics["confusion_matrix"],
             [[1, 1], [1, 2]],

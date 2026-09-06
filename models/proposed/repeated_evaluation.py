@@ -7,6 +7,9 @@ AGGREGATED_METRICS = (
     "precision",
     "recall",
     "f1",
+    "specificity",
+    "balanced_accuracy",
+    "mcc",
 )
 
 

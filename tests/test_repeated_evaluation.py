@@ -12,6 +12,9 @@ class RepeatedEvaluationTests(unittest.TestCase):
                 "precision": 0.5,
                 "recall": 1.0,
                 "f1": 2 / 3,
+                "specificity": 0.5,
+                "balanced_accuracy": 0.75,
+                "mcc": 0.25,
             },
             {
                 "loss": 0.5,
@@ -19,6 +22,9 @@ class RepeatedEvaluationTests(unittest.TestCase):
                 "precision": 0.8,
                 "recall": 0.5,
                 "f1": 0.6153846154,
+                "specificity": 0.75,
+                "balanced_accuracy": 0.625,
+                "mcc": 0.3,
             },
         ]
 
@@ -38,6 +44,9 @@ class RepeatedEvaluationTests(unittest.TestCase):
                 "precision": 0.75,
                 "recall": 1.0,
                 "f1": 0.8571428571,
+                "specificity": 0.8,
+                "balanced_accuracy": 0.9,
+                "mcc": 0.7,
             },
         ]
 
