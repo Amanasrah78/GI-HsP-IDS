@@ -53,3 +53,5 @@ graph/output/*
 !graph/output/.gitkeep
 
 docs/mftst.pdf
+
+results/checkpoints/

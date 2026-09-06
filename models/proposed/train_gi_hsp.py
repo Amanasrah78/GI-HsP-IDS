@@ -59,6 +59,12 @@ def main():
         sequence_directory=data_config["sequence_directory"],
     )
 
+    test_dataset = GIHSPSequenceDataset(
+        data_config["partition_path"],
+        "test",
+        sequence_directory=data_config["sequence_directory"],
+    )
+
     train_loader = build_data_loader(
         train_dataset,
         batch_size=data_config["batch_size"],
@@ -72,6 +78,12 @@ def main():
         shuffle=False,
     )
 
+    test_loader = build_data_loader(
+        test_dataset,
+        batch_size=data_config["batch_size"],
+        num_workers=data_config["num_workers"],
+        shuffle=False,
+    )
     model = GIHSPModel(
         **config["model"],
     ).to(device)
@@ -130,6 +142,26 @@ def main():
                 checkpoint_directory / "best.pt",
             )
 
+    best_checkpoint_path = checkpoint_directory / "best.pt"
+    best_checkpoint = torch.load(
+        best_checkpoint_path,
+        map_location=device,
+    )
 
+    model.load_state_dict(
+        best_checkpoint["model_state_dict"]
+    )
+
+    test_metrics = evaluate_model(
+        model,
+        test_loader,
+        device,
+    )
+
+    print(
+        f"test_loss={test_metrics['loss']:.6f} "
+        f"test_accuracy={test_metrics['accuracy']:.6f} "
+        f"test_sample_count={test_metrics['sample_count']}"
+    )
 if __name__ == "__main__":
     main()
