@@ -160,6 +160,28 @@ class StratifiedPartitionExperimentsTests(unittest.TestCase):
             self.assertEqual(labels, {"benign", "attack"})
 
 
+    def test_stratified_binary_split_preserves_both_classes_for_ten_experiments(self):
+        experiment_labels = {
+            **{f"benign-{i}": "benign" for i in range(5)},
+            **{f"attack-{i}": "attack" for i in range(5)},
+        }
+
+        result = partition_experiments(
+            list(experiment_labels),
+            train_fraction=0.60,
+            validation_fraction=0.20,
+            seed=0,
+            experiment_labels=experiment_labels,
+        )
+
+        for partition_name in ("train", "validation", "test"):
+            labels = {
+                experiment_labels[experiment_id]
+                for experiment_id in result["partitions"][partition_name]
+            }
+            self.assertEqual(labels, {"benign", "attack"})
+
+
 class LoadExperimentLabelsTests(unittest.TestCase):
     def test_loads_class_labels_from_manifests(self):
         with tempfile.TemporaryDirectory() as directory:

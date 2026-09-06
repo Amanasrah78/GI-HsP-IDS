@@ -129,18 +129,42 @@ def partition_experiments(
 
         rng = random.Random(seed)
 
+        for group in label_groups.values():
+            rng.shuffle(group)
+
+        partition_names = (
+            "train",
+            "validation",
+            "test",
+        )
+
+        class_coverage_feasible = (
+            all(
+                partition_targets[name] >= len(label_groups)
+                for name in partition_names
+            )
+            and all(
+                len(group) >= len(partition_names)
+                for group in label_groups.values()
+            )
+        )
+
+        if class_coverage_feasible:
+            for label in sorted(label_groups):
+                group = label_groups[label]
+
+                for partition_name in partition_names:
+                    partitions[partition_name].append(
+                        group.pop()
+                    )
+
         for label in sorted(label_groups):
             group = label_groups[label]
-            rng.shuffle(group)
 
             for experiment_id in group:
                 candidates = [
                     name
-                    for name in (
-                        "train",
-                        "validation",
-                        "test",
-                    )
+                    for name in partition_names
                     if len(partitions[name])
                     < partition_targets[name]
                 ]
