@@ -6,7 +6,7 @@ import torch
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 
-from models.proposed.gi_hsp_model import GIHSPModel
+from models.proposed.model_factory import build_model
 from models.proposed.sequence_batching import collate_gi_hsp_sequences
 from models.proposed.sequence_dataset import GIHSPSequenceDataset
 from models.proposed.training import evaluate_model, train_one_epoch
@@ -84,8 +84,8 @@ def main():
         num_workers=data_config["num_workers"],
         shuffle=False,
     )
-    model = GIHSPModel(
-        **config["model"],
+    model = build_model(
+        config["model"],
     ).to(device)
 
     optimizer_config = config["optimizer"]

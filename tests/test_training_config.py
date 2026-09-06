@@ -89,5 +89,54 @@ class TrainingConfigTests(unittest.TestCase):
             load_training_config(path)
 
 
+
+class TrainingModelSelectionConfigTests(unittest.TestCase):
+    def write_config(self, text):
+        temporary = tempfile.NamedTemporaryFile(
+            mode="w",
+            suffix=".yaml",
+            delete=False,
+            encoding="utf-8",
+        )
+        temporary.write(text)
+        temporary.close()
+        return Path(temporary.name)
+
+    def test_accepts_supported_model_names(self):
+        for model_name in (
+            "gi_hsp",
+            "flow_only",
+            "topology_only",
+        ):
+            with self.subTest(model_name=model_name):
+                config_text = VALID_CONFIG.replace(
+                    "model:\n",
+                    f"model:\n  name: {model_name}\n",
+                    1,
+                )
+                path = self.write_config(config_text)
+
+                config = load_training_config(path)
+
+                self.assertEqual(
+                    config["model"]["name"],
+                    model_name,
+                )
+
+    def test_rejects_unsupported_model_name(self):
+        config_text = VALID_CONFIG.replace(
+            "model:\n",
+            "model:\n  name: unsupported\n",
+            1,
+        )
+        path = self.write_config(config_text)
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "Unsupported model",
+        ):
+            load_training_config(path)
+
+
 if __name__ == "__main__":
     unittest.main()

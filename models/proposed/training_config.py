@@ -27,6 +27,24 @@ def load_training_config(path):
             f"Training config missing sections: {sorted(missing)}"
         )
 
+    supported_models = {
+        "gi_hsp",
+        "flow_only",
+        "topology_only",
+    }
+
+    model_name = config["model"].get(
+        "name",
+        "gi_hsp",
+    )
+
+    if model_name not in supported_models:
+        raise ValueError(
+            f"Unsupported model: {model_name}"
+        )
+
+    config["model"]["name"] = model_name
+
     if config["optimizer"].get("name") != "adam":
         raise ValueError("Unsupported optimizer")
 
