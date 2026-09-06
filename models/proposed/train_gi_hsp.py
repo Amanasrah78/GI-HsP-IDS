@@ -9,7 +9,10 @@ from torch.utils.data import DataLoader
 
 from models.proposed.model_factory import build_model
 from models.proposed.sequence_batching import collate_gi_hsp_sequences
-from models.proposed.sequence_dataset import GIHSPSequenceDataset
+from models.proposed.sequence_dataset import (
+    GIHSPSequenceDataset,
+    compute_packet_feature_statistics,
+)
 from models.proposed.training import evaluate_model, train_one_epoch
 from models.proposed.training_config import load_training_config
 
@@ -131,21 +134,29 @@ def main():
 
     data_config = config["data"]
 
+    packet_feature_statistics = compute_packet_feature_statistics(
+        data_config["partition_path"],
+        sequence_directory=data_config["sequence_directory"],
+    )
+
     train_dataset = GIHSPSequenceDataset(
         data_config["partition_path"],
         "train",
         sequence_directory=data_config["sequence_directory"],
+        packet_feature_statistics=packet_feature_statistics,
     )
     validation_dataset = GIHSPSequenceDataset(
         data_config["partition_path"],
         "validation",
         sequence_directory=data_config["sequence_directory"],
+        packet_feature_statistics=packet_feature_statistics,
     )
 
     test_dataset = GIHSPSequenceDataset(
         data_config["partition_path"],
         "test",
         sequence_directory=data_config["sequence_directory"],
+        packet_feature_statistics=packet_feature_statistics,
     )
 
     train_loader = build_data_loader(

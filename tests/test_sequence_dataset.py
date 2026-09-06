@@ -5,6 +5,7 @@ from pathlib import Path
 
 from models.proposed.sequence_dataset import (
     GIHSPSequenceDataset,
+    compute_packet_feature_statistics,
     load_partitions,
 )
 
@@ -177,6 +178,85 @@ class SequenceDatasetTests(unittest.TestCase):
             self.assertEqual(
                 tuple(item["adjacency"].shape),
                 (10, 2, 2),
+            )
+
+
+    def test_packet_feature_statistics_normalize_training_data(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            sequence_dir = root / "sequences"
+            sequence_dir.mkdir()
+
+            first = self.make_sequence_record("train-a", "benign")
+            second = self.make_sequence_record("train-b", "attack")
+
+            for step in first["steps"]:
+                step["packet_features"]["packet_count"] = 10
+
+            for step in second["steps"]:
+                step["packet_features"]["packet_count"] = 30
+
+            for record in (first, second):
+                output = (
+                    sequence_dir
+                    / f"{record['experiment_id']}.sequences.jsonl"
+                )
+                with output.open("w", encoding="utf-8") as handle:
+                    json.dump(record, handle)
+                    handle.write("\n")
+
+            self.write_sequence_file(
+                sequence_dir,
+                "validation-exp",
+                "benign",
+            )
+            self.write_sequence_file(
+                sequence_dir,
+                "test-exp",
+                "attack",
+            )
+
+            partition_path = root / "partitions.json"
+            partition_path.write_text(
+                json.dumps({
+                    "schema_version": 1,
+                    "partitions": {
+                        "train": ["train-a", "train-b"],
+                        "validation": ["validation-exp"],
+                        "test": ["test-exp"],
+                    },
+                }),
+                encoding="utf-8",
+            )
+
+            statistics = compute_packet_feature_statistics(
+                partition_path,
+                sequence_directory=sequence_dir,
+            )
+
+            train_dataset = GIHSPSequenceDataset(
+                partition_path,
+                "train",
+                sequence_directory=sequence_dir,
+                packet_feature_statistics=statistics,
+            )
+
+            packet_counts = [
+                item["packet_features"][:, 0]
+                for item in train_dataset
+            ]
+
+            combined = __import__("torch").cat(packet_counts)
+
+            self.assertAlmostEqual(
+                combined.mean().item(),
+                0.0,
+                places=6,
+            )
+            self.assertAlmostEqual(
+                combined.std(unbiased=False).item(),
+                1.0,
+                places=6,
             )
 
 

@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+import torch
 from torch.utils.data import Dataset
 
 from models.proposed.input_assembly import assemble_sequence_inputs
@@ -10,6 +11,59 @@ from models.proposed.tensor_conversion import sequence_inputs_to_tensors
 
 SUPPORTED_PARTITION_SCHEMA_VERSION = 1
 SUPPORTED_SEQUENCE_SCHEMA_VERSION = 1
+
+
+def compute_packet_feature_statistics(
+    partition_path,
+    sequence_directory="results/processed",
+):
+    partitions = load_partitions(partition_path)
+
+    unique_windows = {}
+
+    for experiment_id in partitions["partitions"]["train"]:
+        records = load_experiment_sequences(
+            experiment_id,
+            sequence_directory,
+        )
+
+        for record in records:
+            assembled = assemble_sequence_inputs(record)
+
+            for step, packet_features in zip(
+                record["steps"],
+                assembled["packet_features"],
+            ):
+                key = (
+                    experiment_id,
+                    int(step["window_index"]),
+                )
+                unique_windows[key] = packet_features
+
+    if not unique_windows:
+        raise ValueError("Training split contains no packet features")
+
+    values = torch.tensor(
+        list(unique_windows.values()),
+        dtype=torch.float32,
+    )
+
+    mean = values.mean(dim=0)
+    std = values.std(
+        dim=0,
+        unbiased=False,
+    )
+
+    std = torch.where(
+        std > 0,
+        std,
+        torch.ones_like(std),
+    )
+
+    return {
+        "mean": mean,
+        "std": std,
+    }
 
 
 def load_partitions(path):
@@ -86,6 +140,7 @@ class GIHSPSequenceDataset(Dataset):
         partition_path,
         split,
         sequence_directory="results/processed",
+        packet_feature_statistics=None,
     ):
         partitions = load_partitions(partition_path)
 
@@ -93,6 +148,7 @@ class GIHSPSequenceDataset(Dataset):
             raise ValueError(f"Unsupported dataset split: {split!r}")
 
         self.split = split
+        self.packet_feature_statistics = packet_feature_statistics
         self.records = []
 
         for experiment_id in partitions["partitions"][split]:
@@ -116,8 +172,23 @@ class GIHSPSequenceDataset(Dataset):
         assembled = assemble_sequence_inputs(record)
         tensors = sequence_inputs_to_tensors(assembled)
 
+        packet_features = tensors["packet_features"].squeeze(0)
+
+        if self.packet_feature_statistics is not None:
+            mean = self.packet_feature_statistics["mean"].to(
+                dtype=packet_features.dtype,
+                device=packet_features.device,
+            )
+            std = self.packet_feature_statistics["std"].to(
+                dtype=packet_features.dtype,
+                device=packet_features.device,
+            )
+            packet_features = (
+                packet_features - mean
+            ) / std
+
         return {
-            "packet_features": tensors["packet_features"].squeeze(0),
+            "packet_features": packet_features,
             "node_features": tensors["node_features"].squeeze(0),
             "adjacency": tensors["adjacency"].squeeze(0),
             "target": encode_class_label(record["label"]),
