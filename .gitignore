@@ -57,3 +57,5 @@ docs/mftst.pdf
 results/checkpoints/
 
 docker/mqtt/config-auth/passwd
+
+results/evaluation/
