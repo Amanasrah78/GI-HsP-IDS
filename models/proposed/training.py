@@ -76,9 +76,12 @@ def evaluate_model(
     total_samples = 0
     total_targets = []
     total_predictions = []
+    experiment_logits = {}
+    experiment_targets = {}
 
     with torch.no_grad():
         for batch in data_loader:
+            experiment_ids = list(batch["experiment_ids"])
             batch = move_batch_to_device(batch, device)
 
             outputs = model(
@@ -101,8 +104,28 @@ def evaluate_model(
             ).sum().item()
             total_samples += batch_size
 
-            total_targets.extend(batch["targets"].cpu().tolist())
+            batch_targets = batch["targets"].cpu().tolist()
+            batch_logits = logits.detach().cpu()
+
+            total_targets.extend(batch_targets)
             total_predictions.extend(predictions.cpu().tolist())
+
+            for experiment_id, target, sample_logits in zip(
+                experiment_ids,
+                batch_targets,
+                batch_logits,
+            ):
+                if experiment_id in experiment_targets:
+                    if experiment_targets[experiment_id] != target:
+                        raise ValueError(
+                            "Experiment contains inconsistent targets: "
+                            f"{experiment_id!r}"
+                        )
+                else:
+                    experiment_targets[experiment_id] = target
+                    experiment_logits[experiment_id] = []
+
+                experiment_logits[experiment_id].append(sample_logits)
 
     if total_samples == 0:
         raise ValueError("Evaluation loader contains no samples")
@@ -171,6 +194,107 @@ def evaluate_model(
         else 0.0
     )
 
+    experiment_targets_list = []
+    experiment_predictions = []
+    experiment_loss = 0.0
+
+    for experiment_id, logits_list in experiment_logits.items():
+        mean_logits = torch.stack(logits_list).mean(dim=0)
+        target = experiment_targets[experiment_id]
+        prediction = int(mean_logits.argmax().item())
+
+        experiment_targets_list.append(target)
+        experiment_predictions.append(prediction)
+
+        experiment_loss += criterion(
+            mean_logits.unsqueeze(0),
+            torch.tensor([target], dtype=torch.long),
+        ).item()
+
+    experiment_sample_count = len(experiment_targets_list)
+
+    experiment_true_negative = sum(
+        target == 0 and prediction == 0
+        for target, prediction in zip(
+            experiment_targets_list,
+            experiment_predictions,
+        )
+    )
+    experiment_false_positive = sum(
+        target == 0 and prediction == 1
+        for target, prediction in zip(
+            experiment_targets_list,
+            experiment_predictions,
+        )
+    )
+    experiment_false_negative = sum(
+        target == 1 and prediction == 0
+        for target, prediction in zip(
+            experiment_targets_list,
+            experiment_predictions,
+        )
+    )
+    experiment_true_positive = sum(
+        target == 1 and prediction == 1
+        for target, prediction in zip(
+            experiment_targets_list,
+            experiment_predictions,
+        )
+    )
+
+    experiment_precision_denominator = (
+        experiment_true_positive + experiment_false_positive
+    )
+    experiment_recall_denominator = (
+        experiment_true_positive + experiment_false_negative
+    )
+    experiment_specificity_denominator = (
+        experiment_true_negative + experiment_false_positive
+    )
+
+    experiment_precision = (
+        experiment_true_positive / experiment_precision_denominator
+        if experiment_precision_denominator
+        else 0.0
+    )
+    experiment_recall = (
+        experiment_true_positive / experiment_recall_denominator
+        if experiment_recall_denominator
+        else 0.0
+    )
+    experiment_specificity = (
+        experiment_true_negative / experiment_specificity_denominator
+        if experiment_specificity_denominator
+        else 0.0
+    )
+    experiment_f1 = (
+        2.0
+        * experiment_precision
+        * experiment_recall
+        / (experiment_precision + experiment_recall)
+        if experiment_precision + experiment_recall
+        else 0.0
+    )
+    experiment_balanced_accuracy = (
+        experiment_recall + experiment_specificity
+    ) / 2.0
+
+    experiment_mcc_denominator = math.sqrt(
+        (experiment_true_positive + experiment_false_positive)
+        * (experiment_true_positive + experiment_false_negative)
+        * (experiment_true_negative + experiment_false_positive)
+        * (experiment_true_negative + experiment_false_negative)
+    )
+    experiment_mcc = (
+        (
+            experiment_true_positive * experiment_true_negative
+            - experiment_false_positive * experiment_false_negative
+        )
+        / experiment_mcc_denominator
+        if experiment_mcc_denominator
+        else 0.0
+    )
+
     return {
         "loss": total_loss / total_samples,
         "accuracy": total_correct / total_samples,
@@ -185,4 +309,27 @@ def evaluate_model(
             [false_negative, true_positive],
         ],
         "sample_count": total_samples,
+        "experiment_level": {
+            "loss": experiment_loss / experiment_sample_count,
+            "accuracy": (
+                experiment_true_negative + experiment_true_positive
+            ) / experiment_sample_count,
+            "precision": experiment_precision,
+            "recall": experiment_recall,
+            "f1": experiment_f1,
+            "specificity": experiment_specificity,
+            "balanced_accuracy": experiment_balanced_accuracy,
+            "mcc": experiment_mcc,
+            "confusion_matrix": [
+                [
+                    experiment_true_negative,
+                    experiment_false_positive,
+                ],
+                [
+                    experiment_false_negative,
+                    experiment_true_positive,
+                ],
+            ],
+            "sample_count": experiment_sample_count,
+        },
     }
