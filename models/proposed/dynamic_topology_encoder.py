@@ -49,6 +49,7 @@ class DynamicTopologyEncoder(nn.Module):
         self,
         node_features,
         adjacency,
+        node_mask=None,
     ):
         if node_features.ndim != 4:
             raise ValueError(
@@ -83,6 +84,25 @@ class DynamicTopologyEncoder(nn.Module):
             raise ValueError(
                 "Adjacency shape does not match node tensor"
             )
+
+        if node_mask is not None:
+            expected_mask_shape = (
+                batch_size,
+                node_count,
+            )
+
+            if tuple(node_mask.shape) != expected_mask_shape:
+                raise ValueError(
+                    "Node mask shape does not match node tensor"
+                )
+
+            if node_mask.dtype != torch.bool:
+                raise ValueError("Node mask must be boolean")
+
+            if not torch.all(node_mask.any(dim=1)):
+                raise ValueError(
+                    "Each sample must contain at least one real node"
+                )
 
         node_hidden = self.node_projection(node_features)
 
@@ -121,6 +141,14 @@ class DynamicTopologyEncoder(nn.Module):
             self.hidden_dim,
         )
 
-        graph_embedding = node_embeddings.mean(dim=1)
+        if node_mask is None:
+            graph_embedding = node_embeddings.mean(dim=1)
+        else:
+            mask = node_mask.unsqueeze(-1).to(
+                dtype=node_embeddings.dtype
+            )
+            graph_embedding = (
+                node_embeddings * mask
+            ).sum(dim=1) / mask.sum(dim=1)
 
         return self.output_norm(graph_embedding)

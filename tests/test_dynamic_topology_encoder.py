@@ -144,5 +144,56 @@ class DynamicTopologyEncoderTests(unittest.TestCase):
         )
 
 
+    def test_node_mask_excludes_padded_nodes(self):
+        model = DynamicTopologyEncoder(
+            hidden_dim=16,
+            dropout=0.0,
+        )
+        model.eval()
+
+        node_features, adjacency = self.make_inputs()
+
+        padded_features = torch.zeros(
+            2,
+            10,
+            5,
+            7,
+        )
+        padded_features[:, :, :3, :] = node_features
+
+        padded_adjacency = torch.zeros(
+            2,
+            10,
+            5,
+            5,
+        )
+        padded_adjacency[:, :, :3, :3] = adjacency
+
+        node_mask = torch.tensor([
+            [True, True, True, False, False],
+            [True, True, True, False, False],
+        ])
+
+        with torch.no_grad():
+            original = model(
+                node_features,
+                adjacency,
+            )
+            padded = model(
+                padded_features,
+                padded_adjacency,
+                node_mask=node_mask,
+            )
+
+        self.assertTrue(
+            torch.allclose(
+                original,
+                padded,
+                atol=1e-6,
+                rtol=1e-6,
+            )
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
