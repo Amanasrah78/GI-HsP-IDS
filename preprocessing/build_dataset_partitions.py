@@ -33,10 +33,19 @@ def load_experiment_labels(
             manifest = yaml.safe_load(handle)
 
         try:
-            labels[experiment_id] = manifest["label"]["class"]
+            label = manifest["label"]
+            class_name = label["class"]
+
+            if class_name == "attack":
+                family = label["hsp_family"]
+                labels[experiment_id] = (
+                    f"attack:{family}"
+                )
+            else:
+                labels[experiment_id] = class_name
         except (KeyError, TypeError) as exc:
             raise ValueError(
-                "Experiment manifest missing label class: "
+                "Experiment manifest missing partition label metadata: "
                 f"{manifest_path}"
             ) from exc
 
@@ -107,6 +116,9 @@ def partition_experiments(
                 f"{sorted(missing_labels)}"
             )
 
+        def top_level_label(label):
+            return label.split(":", 1)[0]
+
         label_groups = {}
 
         for experiment_id in sorted(experiment_ids):
@@ -127,46 +139,62 @@ def partition_experiments(
             "test": test_count,
         }
 
-        rng = random.Random(seed)
-
-        for group in label_groups.values():
-            rng.shuffle(group)
-
         partition_names = (
             "train",
             "validation",
             "test",
         )
 
-        class_coverage_feasible = (
+        rng = random.Random(seed)
+
+        for group in label_groups.values():
+            rng.shuffle(group)
+
+        top_level_totals = {}
+
+        for experiment_id in experiment_ids:
+            label = experiment_labels[experiment_id]
+            top_label = top_level_label(label)
+            top_level_totals[top_label] = (
+                top_level_totals.get(top_label, 0) + 1
+            )
+
+        top_level_groups = {}
+
+        for label, group in label_groups.items():
+            top_label = top_level_label(label)
+            top_level_groups.setdefault(
+                top_label,
+                [],
+            ).extend(group)
+
+        for group in top_level_groups.values():
+            rng.shuffle(group)
+
+        top_level_coverage_feasible = (
             all(
-                partition_targets[name] >= len(label_groups)
+                partition_targets[name]
+                >= len(top_level_groups)
                 for name in partition_names
             )
             and all(
                 len(group) >= len(partition_names)
-                for group in label_groups.values()
+                for group in top_level_groups.values()
             )
         )
 
-        if class_coverage_feasible:
-            for label in sorted(label_groups):
-                group = label_groups[label]
-
+        if top_level_coverage_feasible:
+            for top_label in sorted(top_level_groups):
                 for partition_name in partition_names:
+                    experiment_id = top_level_groups[
+                        top_label
+                    ].pop()
+
                     partitions[partition_name].append(
-                        group.pop()
+                        experiment_id
                     )
 
-        label_totals = {
-            label: sum(
-                experiment_labels[item] == label
-                for item in experiment_ids
-            )
-            for label in label_groups
-        }
-
-        while any(label_groups.values()):
+        while any(top_level_groups.values()):
             candidates = []
 
             for partition_name in partition_names:
@@ -176,23 +204,25 @@ def partition_experiments(
                 ):
                     continue
 
-                for label in sorted(label_groups):
-                    if not label_groups[label]:
+                for top_label in sorted(top_level_groups):
+                    if not top_level_groups[top_label]:
                         continue
 
-                    current_label_count = sum(
-                        experiment_labels[item] == label
+                    current_count = sum(
+                        top_level_label(
+                            experiment_labels[item]
+                        )
+                        == top_label
                         for item in partitions[partition_name]
                     )
-                    expected_label_count = (
+
+                    expected_count = (
                         partition_targets[partition_name]
-                        * label_totals[label]
+                        * top_level_totals[top_label]
                         / len(experiment_ids)
                     )
-                    deficit = (
-                        expected_label_count
-                        - current_label_count
-                    )
+
+                    deficit = expected_count - current_count
 
                     candidates.append(
                         (
@@ -200,7 +230,7 @@ def partition_experiments(
                             len(partitions[partition_name])
                             / partition_targets[partition_name],
                             partition_name,
-                            label,
+                            top_label,
                         )
                     )
 
@@ -210,11 +240,145 @@ def partition_experiments(
                 )
 
             candidates.sort()
-            _, _, partition_name, label = candidates[0]
+            _, _, partition_name, top_label = candidates[0]
 
             partitions[partition_name].append(
-                label_groups[label].pop()
+                top_level_groups[top_label].pop()
             )
+
+        attack_family_groups = {
+            label: list(group)
+            for label, group in label_groups.items()
+            if label.startswith("attack:")
+        }
+
+        if len(attack_family_groups) > 1:
+            attack_items = [
+                item
+                for partition in partitions.values()
+                for item in partition
+                if top_level_label(
+                    experiment_labels[item]
+                )
+                == "attack"
+            ]
+
+            for partition_name in partition_names:
+                partitions[partition_name] = [
+                    item
+                    for item in partitions[partition_name]
+                    if top_level_label(
+                        experiment_labels[item]
+                    )
+                    != "attack"
+                ]
+
+            family_groups = {}
+
+            for item in attack_items:
+                family = experiment_labels[item]
+                family_groups.setdefault(
+                    family,
+                    [],
+                ).append(item)
+
+            for group in family_groups.values():
+                rng.shuffle(group)
+
+            attack_targets = {
+                name: (
+                    partition_targets[name]
+                    - len(partitions[name])
+                )
+                for name in partition_names
+            }
+
+            family_coverage_feasible = (
+                all(
+                    attack_targets[name]
+                    >= len(family_groups)
+                    for name in partition_names
+                )
+                and all(
+                    len(group) >= len(partition_names)
+                    for group in family_groups.values()
+                )
+            )
+
+            if family_coverage_feasible:
+                for family in sorted(family_groups):
+                    for partition_name in partition_names:
+                        partitions[partition_name].append(
+                            family_groups[family].pop()
+                        )
+
+            family_totals = {
+                family: sum(
+                    experiment_labels[item] == family
+                    for item in attack_items
+                )
+                for family in family_groups
+            }
+
+            while any(family_groups.values()):
+                candidates = []
+
+                for partition_name in partition_names:
+                    current_attack_count = sum(
+                        top_level_label(
+                            experiment_labels[item]
+                        )
+                        == "attack"
+                        for item in partitions[partition_name]
+                    )
+
+                    if (
+                        current_attack_count
+                        >= attack_targets[partition_name]
+                    ):
+                        continue
+
+                    for family in sorted(family_groups):
+                        if not family_groups[family]:
+                            continue
+
+                        current_family_count = sum(
+                            experiment_labels[item] == family
+                            for item in partitions[partition_name]
+                        )
+
+                        expected_family_count = (
+                            attack_targets[partition_name]
+                            * family_totals[family]
+                            / len(attack_items)
+                        )
+
+                        deficit = (
+                            expected_family_count
+                            - current_family_count
+                        )
+
+                        candidates.append(
+                            (
+                                -deficit,
+                                current_attack_count
+                                / attack_targets[partition_name],
+                                partition_name,
+                                family,
+                            )
+                        )
+
+                if not candidates:
+                    raise ValueError(
+                        "Unable to satisfy attack-family targets"
+                    )
+
+                candidates.sort()
+                _, _, partition_name, family = candidates[0]
+
+                partitions[partition_name].append(
+                    family_groups[family].pop()
+                )
 
     return {
         "schema_version": PARTITION_SCHEMA_VERSION,

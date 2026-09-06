@@ -205,6 +205,34 @@ class StratifiedPartitionExperimentsTests(unittest.TestCase):
         self.assertEqual(train_labels.count("attack"), 3)
 
 
+    def test_stratified_split_distributes_attack_families(self):
+        experiment_labels = {
+            **{f"benign-{i}": "benign" for i in range(6)},
+            **{f"nmap-{i}": "attack:nmap" for i in range(3)},
+            **{f"auth-{i}": "attack:mosquitto_clients" for i in range(3)},
+        }
+
+        result = partition_experiments(
+            list(experiment_labels),
+            train_fraction=0.50,
+            validation_fraction=0.25,
+            seed=0,
+            experiment_labels=experiment_labels,
+        )
+
+        for partition_name in ("validation", "test"):
+            labels = {
+                experiment_labels[item]
+                for item in result["partitions"][partition_name]
+            }
+            self.assertTrue(
+                labels
+                & {"attack:nmap", "attack:mosquitto_clients"}
+            )
+
+
+
+
 class LoadExperimentLabelsTests(unittest.TestCase):
     def test_loads_class_labels_from_manifests(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -215,7 +243,9 @@ class LoadExperimentLabelsTests(unittest.TestCase):
                 encoding="utf-8",
             )
             (root / "attack-a.yaml").write_text(
-                "label:\n  class: attack\n",
+                "label:\n"
+                "  class: attack\n"
+                "  hsp_family: nmap\n",
                 encoding="utf-8",
             )
 
@@ -228,7 +258,7 @@ class LoadExperimentLabelsTests(unittest.TestCase):
                 labels,
                 {
                     "benign-a": "benign",
-                    "attack-a": "attack",
+                    "attack-a": "attack:nmap",
                 },
             )
 
