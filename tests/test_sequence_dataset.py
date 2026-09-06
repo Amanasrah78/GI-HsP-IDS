@@ -3,6 +3,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import torch
+
 from models.proposed.sequence_dataset import (
     GIHSPSequenceDataset,
     compute_node_feature_statistics,
@@ -323,7 +325,6 @@ class SequenceDatasetTests(unittest.TestCase):
                 node_feature_statistics=statistics,
             )
 
-            import torch
 
             values = torch.cat([
                 item["node_features"][:, :, 6].reshape(-1)
@@ -341,6 +342,76 @@ class SequenceDatasetTests(unittest.TestCase):
                 places=6,
             )
 
+
+
+    def test_inactive_nodes_remain_zero_after_normalization(self):
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+
+            partition_path = directory / "partitions.json"
+            sequence_directory = directory / "sequences"
+            sequence_directory.mkdir()
+
+            partition_path.write_text(json.dumps({
+                "schema_version": 1,
+                "partitions": {
+                    "train": ["train-a", "train-b"],
+                    "validation": ["validation-a"],
+                    "test": ["test-a"],
+                },
+            }))
+
+            for experiment_id, active, payload in (
+                ("train-a", 0, 0),
+                ("train-b", 1, 20),
+                ("validation-a", 0, 0),
+                ("test-a", 0, 0),
+            ):
+                record = self.make_sequence_record(
+                    experiment_id=experiment_id,
+                    label_class=(
+                        "benign"
+                        if experiment_id != "train-b"
+                        else "attack"
+                    ),
+                )
+
+                for step in record["steps"]:
+                    for node in step["graph"]["node_features"]:
+                        node["active"] = active
+                        node["in_neighbor_count"] = active
+                        node["out_neighbor_count"] = active
+                        node["in_event_count"] = active
+                        node["out_event_count"] = active
+                        node["in_payload_bytes"] = payload
+                        node["out_payload_bytes"] = payload
+
+                path_out = (
+                    sequence_directory
+                    / f"{experiment_id}.sequences.jsonl"
+                )
+                path_out.write_text(json.dumps(record) + "\n")
+
+            stats = compute_node_feature_statistics(
+                partition_path,
+                sequence_directory=sequence_directory,
+            )
+
+            dataset = GIHSPSequenceDataset(
+                partition_path,
+                "test",
+                sequence_directory=sequence_directory,
+                node_feature_statistics=stats,
+            )
+
+            item = dataset[0]
+
+            self.assertTrue(
+                torch.equal(
+                    item["node_features"],
+                    torch.zeros_like(item["node_features"]),
+                )
+            )
 
 if __name__ == "__main__":
     unittest.main()

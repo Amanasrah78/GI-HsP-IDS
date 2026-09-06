@@ -259,9 +259,15 @@ class GIHSPSequenceDataset(Dataset):
                 dtype=node_features.dtype,
                 device=node_features.device,
             )
+            active_mask = node_features[..., 0] > 0.5
+
             node_features = (
                 node_features - mean
             ) / std
+
+            node_features = node_features * active_mask.unsqueeze(-1).to(
+                dtype=node_features.dtype
+            )
 
         return {
             "packet_features": packet_features,
