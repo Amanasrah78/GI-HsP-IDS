@@ -179,7 +179,8 @@ def partition_experiments(
                         sum(
                             experiment_labels[item] == label
                             for item in partitions[name]
-                        ),
+                        )
+                        / partition_targets[name],
                         len(partitions[name])
                         / partition_targets[name],
                         name,
