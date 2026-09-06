@@ -194,6 +194,51 @@ class DynamicTopologyEncoderTests(unittest.TestCase):
             )
         )
 
+    def test_event_count_magnitude_affects_embedding(self):
+        torch.manual_seed(0)
+
+        model = DynamicTopologyEncoder(
+            hidden_dim=16,
+            dropout=0.0,
+        )
+        model.eval()
+
+        node_features = torch.randn(
+            1,
+            10,
+            3,
+            7,
+        )
+
+        low_intensity = torch.zeros(
+            1,
+            10,
+            3,
+            3,
+        )
+        low_intensity[:, :, 0, 1] = 1.0
+
+        high_intensity = torch.zeros_like(low_intensity)
+        high_intensity[:, :, 0, 1] = 10.0
+
+        with torch.no_grad():
+            low_embedding = model(
+                node_features,
+                low_intensity,
+            )
+            high_embedding = model(
+                node_features,
+                high_intensity,
+            )
+
+        self.assertFalse(
+            torch.allclose(
+                low_embedding,
+                high_embedding,
+                atol=1e-7,
+                rtol=1e-7,
+            )
+        )
 
 if __name__ == "__main__":
     unittest.main()

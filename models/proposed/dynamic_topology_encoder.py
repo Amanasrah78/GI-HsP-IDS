@@ -109,14 +109,18 @@ class DynamicTopologyEncoder(nn.Module):
         degree = adjacency.sum(
             dim=-1,
             keepdim=True,
-        ).clamp_min(1.0)
+        )
 
-        normalized_adjacency = adjacency / degree
+        safe_degree = degree.clamp_min(1.0)
+        normalized_adjacency = adjacency / safe_degree
 
         neighbor_hidden = torch.matmul(
             normalized_adjacency,
             node_hidden,
         )
+
+        intensity = torch.log1p(degree)
+        neighbor_hidden = neighbor_hidden * intensity
 
         encoded = (
             self.self_projection(node_hidden)
