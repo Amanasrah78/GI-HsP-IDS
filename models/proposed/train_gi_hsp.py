@@ -161,6 +161,10 @@ def main():
     print(
         f"test_loss={test_metrics['loss']:.6f} "
         f"test_accuracy={test_metrics['accuracy']:.6f} "
+        f"test_precision={test_metrics['precision']:.6f} "
+        f"test_recall={test_metrics['recall']:.6f} "
+        f"test_f1={test_metrics['f1']:.6f} "
+        f"test_confusion_matrix={test_metrics['confusion_matrix']} "
         f"test_sample_count={test_metrics['sample_count']}"
     )
 if __name__ == "__main__":
