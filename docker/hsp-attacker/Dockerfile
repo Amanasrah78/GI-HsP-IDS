@@ -5,6 +5,7 @@ RUN apt-get update \
         nmap \
         hydra \
         medusa \
+        mosquitto-clients \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /attack

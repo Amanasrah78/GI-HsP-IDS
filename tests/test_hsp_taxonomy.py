@@ -30,6 +30,13 @@ class HSPTaxonomyTests(unittest.TestCase):
             "hsp_family": "hydra",
         })
 
+    def test_accepts_mosquitto_clients_authentication_family(self):
+        validate_hsp_label({
+            "class": "attack",
+            "attack_goal": "authentication",
+            "hsp_family": "mosquitto_clients",
+        })
+
     def test_rejects_unknown_attack_goal(self):
         with self.assertRaisesRegex(
             ValueError,

@@ -19,6 +19,7 @@ attack_goals:
       - hydra
       - medusa
       - patator
+      - mosquitto_clients
 
   denial_of_service:
     families:
