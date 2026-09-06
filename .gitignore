@@ -55,3 +55,5 @@ graph/output/*
 docs/mftst.pdf
 
 results/checkpoints/
+
+docker/mqtt/config-auth/passwd
