@@ -158,38 +158,63 @@ def partition_experiments(
                         group.pop()
                     )
 
-        for label in sorted(label_groups):
-            group = label_groups[label]
+        label_totals = {
+            label: sum(
+                experiment_labels[item] == label
+                for item in experiment_ids
+            )
+            for label in label_groups
+        }
 
-            for experiment_id in group:
-                candidates = [
-                    name
-                    for name in partition_names
-                    if len(partitions[name])
-                    < partition_targets[name]
-                ]
+        while any(label_groups.values()):
+            candidates = []
 
-                if not candidates:
-                    raise ValueError(
-                        "Unable to satisfy partition targets"
+            for partition_name in partition_names:
+                if (
+                    len(partitions[partition_name])
+                    >= partition_targets[partition_name]
+                ):
+                    continue
+
+                for label in sorted(label_groups):
+                    if not label_groups[label]:
+                        continue
+
+                    current_label_count = sum(
+                        experiment_labels[item] == label
+                        for item in partitions[partition_name]
+                    )
+                    expected_label_count = (
+                        partition_targets[partition_name]
+                        * label_totals[label]
+                        / len(experiment_ids)
+                    )
+                    deficit = (
+                        expected_label_count
+                        - current_label_count
                     )
 
-                candidates.sort(
-                    key=lambda name: (
-                        sum(
-                            experiment_labels[item] == label
-                            for item in partitions[name]
+                    candidates.append(
+                        (
+                            -deficit,
+                            len(partitions[partition_name])
+                            / partition_targets[partition_name],
+                            partition_name,
+                            label,
                         )
-                        / partition_targets[name],
-                        len(partitions[name])
-                        / partition_targets[name],
-                        name,
                     )
+
+            if not candidates:
+                raise ValueError(
+                    "Unable to satisfy partition targets"
                 )
 
-                partitions[candidates[0]].append(
-                    experiment_id
-                )
+            candidates.sort()
+            _, _, partition_name, label = candidates[0]
+
+            partitions[partition_name].append(
+                label_groups[label].pop()
+            )
 
     return {
         "schema_version": PARTITION_SCHEMA_VERSION,
