@@ -195,6 +195,37 @@ has been shown to separate multiple benchmark IDS datasets for
 dataset-specific rather than transferable reasons. See
 [D'hooge et al., DIMVA 2022](https://doi.org/10.1007/978-3-031-09484-2_2).
 
+## Model training and ablation comparison
+
+The proposed GI-HsP model combines a flow-temporal encoder, a dynamic
+topology encoder, and gated cross-view fusion. Two ablation baselines
+reuse the same data pipeline and training procedure:
+
+- `flow_only`: flow-temporal branch only.
+- `topology_only`: dynamic-topology branch only.
+
+Train an individual model with its reproducible configuration:
+
+```bash
+python -m models.proposed.train_gi_hsp \
+  --config configs/gi_hsp_training.yaml
+```
+
+Equivalent configurations are available at
+`configs/flow_only_training.yaml` and
+`configs/topology_only_training.yaml`.
+
+Run all three models sequentially on the same dataset partitions with:
+
+```bash
+bash scripts/run_model_comparison.sh
+```
+
+Evaluation reports loss, accuracy, precision, recall, F1 score, a
+binary confusion matrix, and sample count. Checkpoints are written to
+separate directories so baseline runs do not overwrite the proposed
+model checkpoint.
+
 ## Evaluation constraints
 
 The current five-second duration matches the dynamic graph. It remains
@@ -219,3 +250,4 @@ Run:
 ```bash
 python3 -m unittest discover -s tests -v
 ```
+
