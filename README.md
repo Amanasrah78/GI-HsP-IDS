@@ -165,6 +165,11 @@ The default requested fractions are 0.70 train, 0.15 validation, and
 0.15 test. At least three experiment IDs are required, and every
 experiment is assigned to exactly one partition.
 
+The partitioner reads each experiment's class label from its manifest
+and uses deterministic class-aware assignment so that class coverage is
+preserved across train, validation, and test whenever the available
+experiment counts and requested partition sizes make that possible.
+
 ## Predictive-feature boundary
 
 Only values nested under `packet_features` belong to the packet

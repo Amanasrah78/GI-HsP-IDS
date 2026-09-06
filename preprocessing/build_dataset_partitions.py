@@ -3,8 +3,44 @@ import json
 import random
 from pathlib import Path
 
+import yaml
+
 
 PARTITION_SCHEMA_VERSION = 1
+
+
+def load_experiment_labels(
+    experiment_ids,
+    experiment_directory=Path("experiments"),
+):
+    labels = {}
+
+    for experiment_id in experiment_ids:
+        manifest_path = (
+            Path(experiment_directory)
+            / f"{experiment_id}.yaml"
+        )
+
+        if not manifest_path.exists():
+            raise ValueError(
+                f"Experiment manifest not found: {manifest_path}"
+            )
+
+        with manifest_path.open(
+            "r",
+            encoding="utf-8",
+        ) as handle:
+            manifest = yaml.safe_load(handle)
+
+        try:
+            labels[experiment_id] = manifest["label"]["class"]
+        except (KeyError, TypeError) as exc:
+            raise ValueError(
+                "Experiment manifest missing label class: "
+                f"{manifest_path}"
+            ) from exc
+
+    return labels
 
 
 def partition_experiments(
@@ -12,6 +48,7 @@ def partition_experiments(
     train_fraction=0.7,
     validation_fraction=0.15,
     seed=0,
+    experiment_labels=None,
 ):
     if len(experiment_ids) < 3:
         raise ValueError(
@@ -34,10 +71,7 @@ def partition_experiments(
             "train and validation fractions must sum to less than 1"
         )
 
-    shuffled = sorted(experiment_ids)
-    random.Random(seed).shuffle(shuffled)
-
-    count = len(shuffled)
+    count = len(experiment_ids)
     train_count = int(count * train_fraction)
     validation_count = int(count * validation_fraction)
 
@@ -47,7 +81,90 @@ def partition_experiments(
     if train_count + validation_count >= count:
         train_count = count - validation_count - 1
 
-    validation_end = train_count + validation_count
+    test_count = count - train_count - validation_count
+
+    if experiment_labels is None:
+        shuffled = sorted(experiment_ids)
+        random.Random(seed).shuffle(shuffled)
+
+        validation_end = train_count + validation_count
+
+        partitions = {
+            "train": shuffled[:train_count],
+            "validation": shuffled[
+                train_count:validation_end
+            ],
+            "test": shuffled[validation_end:],
+        }
+    else:
+        missing_labels = (
+            set(experiment_ids) - set(experiment_labels)
+        )
+
+        if missing_labels:
+            raise ValueError(
+                "Missing experiment labels for: "
+                f"{sorted(missing_labels)}"
+            )
+
+        label_groups = {}
+
+        for experiment_id in sorted(experiment_ids):
+            label = experiment_labels[experiment_id]
+            label_groups.setdefault(label, []).append(
+                experiment_id
+            )
+
+        partitions = {
+            "train": [],
+            "validation": [],
+            "test": [],
+        }
+
+        partition_targets = {
+            "train": train_count,
+            "validation": validation_count,
+            "test": test_count,
+        }
+
+        rng = random.Random(seed)
+
+        for label in sorted(label_groups):
+            group = label_groups[label]
+            rng.shuffle(group)
+
+            for experiment_id in group:
+                candidates = [
+                    name
+                    for name in (
+                        "train",
+                        "validation",
+                        "test",
+                    )
+                    if len(partitions[name])
+                    < partition_targets[name]
+                ]
+
+                if not candidates:
+                    raise ValueError(
+                        "Unable to satisfy partition targets"
+                    )
+
+                candidates.sort(
+                    key=lambda name: (
+                        sum(
+                            experiment_labels[item] == label
+                            for item in partitions[name]
+                        ),
+                        len(partitions[name])
+                        / partition_targets[name],
+                        name,
+                    )
+                )
+
+                partitions[candidates[0]].append(
+                    experiment_id
+                )
 
     return {
         "schema_version": PARTITION_SCHEMA_VERSION,
@@ -58,13 +175,7 @@ def partition_experiments(
             1.0 - train_fraction - validation_fraction,
             12,
         ),
-        "partitions": {
-            "train": shuffled[:train_count],
-            "validation": shuffled[
-                train_count:validation_end
-            ],
-            "test": shuffled[validation_end:],
-        },
+        "partitions": partitions,
     }
 
 
@@ -113,11 +224,16 @@ def main():
     )
     args = parser.parse_args()
 
+    experiment_labels = load_experiment_labels(
+        args.experiment_ids,
+    )
+
     partitions = partition_experiments(
         args.experiment_ids,
         train_fraction=args.train_fraction,
         validation_fraction=args.validation_fraction,
         seed=args.seed,
+        experiment_labels=experiment_labels,
     )
     output_path = Path(args.output)
     write_partitions(output_path, partitions)

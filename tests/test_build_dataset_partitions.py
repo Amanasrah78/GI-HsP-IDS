@@ -3,6 +3,7 @@ import unittest
 from pathlib import Path
 
 from preprocessing.build_dataset_partitions import (
+    load_experiment_labels,
     partition_experiments,
     write_partitions,
 )
@@ -128,6 +129,62 @@ class WritePartitionsTests(unittest.TestCase):
                 output_path.with_name(
                     output_path.name + ".tmp"
                 ).exists()
+            )
+
+
+
+class StratifiedPartitionExperimentsTests(unittest.TestCase):
+    def test_stratified_binary_split_preserves_both_classes(self):
+        experiment_labels = {
+            "benign-a": "benign",
+            "benign-b": "benign",
+            "benign-c": "benign",
+            "attack-a": "attack",
+            "attack-b": "attack",
+            "attack-c": "attack",
+        }
+
+        result = partition_experiments(
+            list(experiment_labels),
+            train_fraction=0.34,
+            validation_fraction=0.34,
+            seed=1,
+            experiment_labels=experiment_labels,
+        )
+
+        for partition_name in ("train", "validation", "test"):
+            labels = {
+                experiment_labels[experiment_id]
+                for experiment_id in result["partitions"][partition_name]
+            }
+            self.assertEqual(labels, {"benign", "attack"})
+
+
+class LoadExperimentLabelsTests(unittest.TestCase):
+    def test_loads_class_labels_from_manifests(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+
+            (root / "benign-a.yaml").write_text(
+                "label:\n  class: benign\n",
+                encoding="utf-8",
+            )
+            (root / "attack-a.yaml").write_text(
+                "label:\n  class: attack\n",
+                encoding="utf-8",
+            )
+
+            labels = load_experiment_labels(
+                ["benign-a", "attack-a"],
+                experiment_directory=root,
+            )
+
+            self.assertEqual(
+                labels,
+                {
+                    "benign-a": "benign",
+                    "attack-a": "attack",
+                },
             )
 
 
