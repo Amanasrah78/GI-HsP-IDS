@@ -58,6 +58,67 @@ class RepeatedEvaluationTests(unittest.TestCase):
 
 
 
+    def test_aggregate_metric_runs_includes_experiment_level_summary(self):
+        runs = [
+            {
+                "loss": 0.7,
+                "accuracy": 0.5,
+                "precision": 0.5,
+                "recall": 1.0,
+                "f1": 2 / 3,
+                "specificity": 0.5,
+                "balanced_accuracy": 0.75,
+                "mcc": 0.25,
+                "experiment_level": {
+                    "loss": 0.6,
+                    "accuracy": 0.75,
+                    "precision": 1.0,
+                    "recall": 0.5,
+                    "f1": 2 / 3,
+                    "specificity": 1.0,
+                    "balanced_accuracy": 0.75,
+                    "mcc": 0.5773502692,
+                },
+            },
+            {
+                "loss": 0.5,
+                "accuracy": 0.75,
+                "precision": 0.8,
+                "recall": 0.5,
+                "f1": 0.6153846154,
+                "specificity": 0.75,
+                "balanced_accuracy": 0.625,
+                "mcc": 0.3,
+                "experiment_level": {
+                    "loss": 0.8,
+                    "accuracy": 0.5,
+                    "precision": 0.5,
+                    "recall": 1.0,
+                    "f1": 2 / 3,
+                    "specificity": 0.0,
+                    "balanced_accuracy": 0.5,
+                    "mcc": 0.0,
+                },
+            },
+        ]
+
+        summary = aggregate_metric_runs(runs)
+
+        self.assertIn("experiment_level", summary)
+        self.assertEqual(
+            summary["experiment_level"]["run_count"],
+            2,
+        )
+        self.assertAlmostEqual(
+            summary["experiment_level"]["accuracy"]["mean"],
+            0.625,
+        )
+        self.assertAlmostEqual(
+            summary["experiment_level"]["balanced_accuracy"]["mean"],
+            0.625,
+        )
+
+
     def test_aggregate_metric_runs_rejects_empty_input(self):
         with self.assertRaisesRegex(
             ValueError,

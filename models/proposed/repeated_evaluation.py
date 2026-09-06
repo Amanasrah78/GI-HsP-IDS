@@ -13,10 +13,7 @@ AGGREGATED_METRICS = (
 )
 
 
-def aggregate_metric_runs(runs):
-    if not runs:
-        raise ValueError("At least one metric run is required")
-
+def _aggregate_flat_metric_runs(runs):
     summary = {
         "run_count": len(runs),
     }
@@ -35,5 +32,30 @@ def aggregate_metric_runs(runs):
                 else 0.0
             ),
         }
+
+    return summary
+
+
+def aggregate_metric_runs(runs):
+    if not runs:
+        raise ValueError("At least one metric run is required")
+
+    summary = _aggregate_flat_metric_runs(runs)
+
+    experiment_runs = [
+        run["experiment_level"]
+        for run in runs
+        if "experiment_level" in run
+    ]
+
+    if experiment_runs:
+        if len(experiment_runs) != len(runs):
+            raise ValueError(
+                "Experiment-level metrics must be present in every run"
+            )
+
+        summary["experiment_level"] = _aggregate_flat_metric_runs(
+            experiment_runs
+        )
 
     return summary
