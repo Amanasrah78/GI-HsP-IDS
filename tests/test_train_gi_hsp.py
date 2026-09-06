@@ -6,6 +6,7 @@ from pathlib import Path
 import torch
 
 from models.proposed.train_gi_hsp import (
+    apply_training_overrides,
     build_data_loader,
     set_seed,
     write_metrics,
@@ -65,6 +66,27 @@ class TrainGIHSPTests(unittest.TestCase):
             (2, 4),
         )
 
+
+    def test_apply_training_overrides_updates_seed_and_checkpoint(self):
+        config = {
+            "seed": 0,
+            "training": {
+                "checkpoint_directory": "results/checkpoints/base",
+            },
+        }
+
+        result = apply_training_overrides(
+            config,
+            seed=7,
+            checkpoint_directory="results/checkpoints/seed-7",
+        )
+
+        self.assertIs(result, config)
+        self.assertEqual(result["seed"], 7)
+        self.assertEqual(
+            result["training"]["checkpoint_directory"],
+            "results/checkpoints/seed-7",
+        )
 
     def test_write_metrics_writes_json(self):
         metrics = {

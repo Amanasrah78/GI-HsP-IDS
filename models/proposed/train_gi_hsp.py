@@ -66,6 +66,22 @@ def build_data_loader(dataset, batch_size, num_workers, shuffle):
     )
 
 
+def apply_training_overrides(
+    config,
+    seed=None,
+    checkpoint_directory=None,
+):
+    if seed is not None:
+        config["seed"] = seed
+
+    if checkpoint_directory is not None:
+        config["training"]["checkpoint_directory"] = (
+            checkpoint_directory
+        )
+
+    return config
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -76,9 +92,25 @@ def main():
         "--metrics-output",
         default=None,
     )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+    )
+    parser.add_argument(
+        "--checkpoint-directory",
+        default=None,
+    )
     args = parser.parse_args()
 
     config = load_training_config(args.config)
+
+    config = apply_training_overrides(
+        config,
+        seed=args.seed,
+        checkpoint_directory=args.checkpoint_directory,
+    )
+
     seed = config["seed"]
     set_seed(seed)
 
