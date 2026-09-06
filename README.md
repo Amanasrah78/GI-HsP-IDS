@@ -226,6 +226,18 @@ binary confusion matrix, and sample count. Checkpoints are written to
 separate directories so baseline runs do not overwrite the proposed
 model checkpoint.
 
+
+For repeated training-seed evaluation across the proposed model and
+both ablations, run:
+
+    python scripts/run_repeated_evaluation.py --seeds 0 1 2 3 4 --output results/evaluation/repeated_evaluation.json
+
+Each model is trained independently for every requested seed with an
+isolated checkpoint directory. The resulting JSON records each test run
+and reports the mean and sample standard deviation of loss, accuracy,
+precision, recall, and F1 score. Generated evaluation outputs under
+`results/evaluation/` are ignored by Git.
+
 ## Evaluation constraints
 
 The current five-second duration matches the dynamic graph. It remains
