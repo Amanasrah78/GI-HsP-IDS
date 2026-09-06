@@ -70,6 +70,7 @@ def apply_training_overrides(
     config,
     seed=None,
     checkpoint_directory=None,
+    partition_path=None,
 ):
     if seed is not None:
         config["seed"] = seed
@@ -78,6 +79,9 @@ def apply_training_overrides(
         config["training"]["checkpoint_directory"] = (
             checkpoint_directory
         )
+
+    if partition_path is not None:
+        config["data"]["partition_path"] = partition_path
 
     return config
 
@@ -101,6 +105,10 @@ def main():
         "--checkpoint-directory",
         default=None,
     )
+    parser.add_argument(
+        "--partition-path",
+        default=None,
+    )
     args = parser.parse_args()
 
     config = load_training_config(args.config)
@@ -109,6 +117,7 @@ def main():
         config,
         seed=args.seed,
         checkpoint_directory=args.checkpoint_directory,
+        partition_path=args.partition_path,
     )
 
     seed = config["seed"]

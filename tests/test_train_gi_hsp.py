@@ -67,11 +67,14 @@ class TrainGIHSPTests(unittest.TestCase):
         )
 
 
-    def test_apply_training_overrides_updates_seed_and_checkpoint(self):
+    def test_apply_training_overrides_updates_seed_checkpoint_and_partition(self):
         config = {
             "seed": 0,
             "training": {
                 "checkpoint_directory": "results/checkpoints/base",
+            },
+            "data": {
+                "partition_path": "datasets/processed/partitions.json",
             },
         }
 
@@ -79,6 +82,7 @@ class TrainGIHSPTests(unittest.TestCase):
             config,
             seed=7,
             checkpoint_directory="results/checkpoints/seed-7",
+            partition_path="datasets/processed/partitions-seed7.json",
         )
 
         self.assertIs(result, config)
@@ -86,6 +90,10 @@ class TrainGIHSPTests(unittest.TestCase):
         self.assertEqual(
             result["training"]["checkpoint_directory"],
             "results/checkpoints/seed-7",
+        )
+        self.assertEqual(
+            result["data"]["partition_path"],
+            "datasets/processed/partitions-seed7.json",
         )
 
     def test_write_metrics_writes_json(self):
