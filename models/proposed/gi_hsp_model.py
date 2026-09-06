@@ -50,6 +50,7 @@ class GIHSPModel(nn.Module):
         packet_features,
         node_features,
         adjacency,
+        node_mask=None,
     ):
         flow_embedding = self.flow_encoder(
             packet_features
@@ -58,6 +59,7 @@ class GIHSPModel(nn.Module):
         topology_embedding = self.topology_encoder(
             node_features,
             adjacency,
+            node_mask=node_mask,
         )
 
         fused_embedding = self.fusion(
