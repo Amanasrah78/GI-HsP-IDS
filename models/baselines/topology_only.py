@@ -28,11 +28,13 @@ class TopologyOnlyModel(nn.Module):
         node_features,
         adjacency,
         node_mask=None,
+        payload_adjacency=None,
     ):
         topology_embedding = self.topology_encoder(
             node_features,
             adjacency,
             node_mask=node_mask,
+            payload_adjacency=payload_adjacency,
         )
 
         logits = self.classifier(

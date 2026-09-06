@@ -28,6 +28,13 @@ class TensorConversionTests(unittest.TestCase):
                 ]
                 for _ in range(10)
             ],
+            "payload_adjacency": [
+                [
+                    [0.0 for _ in range(5)]
+                    for _ in range(5)
+                ]
+                for _ in range(10)
+            ],
             "label": {
                 "class": "benign",
                 "attack_goal": "none",
@@ -49,6 +56,10 @@ class TensorConversionTests(unittest.TestCase):
             tuple(tensors["adjacency"].shape),
             (1, 10, 5, 5),
         )
+        self.assertEqual(
+            tuple(tensors["payload_adjacency"].shape),
+            (1, 10, 5, 5),
+        )
 
         self.assertEqual(
             tensors["packet_features"].dtype,
@@ -60,6 +71,10 @@ class TensorConversionTests(unittest.TestCase):
         )
         self.assertEqual(
             tensors["adjacency"].dtype,
+            torch.float32,
+        )
+        self.assertEqual(
+            tensors["payload_adjacency"].dtype,
             torch.float32,
         )
 

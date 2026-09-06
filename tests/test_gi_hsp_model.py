@@ -51,10 +51,13 @@ class GIHSPModelTests(unittest.TestCase):
             self.make_inputs()
         )
 
+        payload_adjacency = adjacency * 100.0
+
         outputs = model(
             packet_features,
             node_features,
             adjacency,
+            payload_adjacency=payload_adjacency,
         )
 
         self.assertEqual(

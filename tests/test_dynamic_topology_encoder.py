@@ -194,6 +194,41 @@ class DynamicTopologyEncoderTests(unittest.TestCase):
             )
         )
 
+    def test_payload_magnitude_affects_embedding(self):
+        torch.manual_seed(0)
+
+        model = DynamicTopologyEncoder(
+            hidden_dim=16,
+            dropout=0.0,
+        )
+        model.eval()
+
+        node_features, adjacency = self.make_inputs()
+
+        low_payload = adjacency.clone()
+        high_payload = adjacency.clone() * 100.0
+
+        with torch.no_grad():
+            low_embedding = model(
+                node_features,
+                adjacency,
+                payload_adjacency=low_payload,
+            )
+            high_embedding = model(
+                node_features,
+                adjacency,
+                payload_adjacency=high_payload,
+            )
+
+        self.assertFalse(
+            torch.allclose(
+                low_embedding,
+                high_embedding,
+                atol=1e-7,
+                rtol=1e-7,
+            )
+        )
+
     def test_event_count_magnitude_affects_embedding(self):
         torch.manual_seed(0)
 

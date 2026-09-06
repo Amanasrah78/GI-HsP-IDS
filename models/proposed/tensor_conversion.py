@@ -23,9 +23,16 @@ def sequence_inputs_to_tensors(
         device=device,
     )
 
+    payload_adjacency = torch.tensor(
+        [assembled["payload_adjacency"]],
+        dtype=torch.float32,
+        device=device,
+    )
+
     return {
         "packet_features": packet_features,
         "node_features": node_features,
         "adjacency": adjacency,
+        "payload_adjacency": payload_adjacency,
         "label": assembled["label"],
     }

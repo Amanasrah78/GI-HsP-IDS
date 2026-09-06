@@ -28,6 +28,7 @@ class FlowOnlyModel(nn.Module):
         node_features,
         adjacency,
         node_mask=None,
+        payload_adjacency=None,
     ):
         flow_embedding = self.flow_encoder(
             packet_features

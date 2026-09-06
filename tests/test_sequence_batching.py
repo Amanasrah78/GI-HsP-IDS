@@ -11,6 +11,10 @@ class SequenceBatchingTests(unittest.TestCase):
             "packet_features": torch.ones(10, 10),
             "node_features": torch.ones(10, node_count, 7),
             "adjacency": torch.ones(10, node_count, node_count),
+            "payload_adjacency": torch.full(
+                (10, node_count, node_count),
+                2.0,
+            ),
             "target": target,
             "label": {"class": "benign" if target == 0 else "attack"},
             "experiment_id": experiment_id,
@@ -33,6 +37,10 @@ class SequenceBatchingTests(unittest.TestCase):
         )
         self.assertEqual(
             tuple(batch["adjacency"].shape),
+            (2, 10, 4, 4),
+        )
+        self.assertEqual(
+            tuple(batch["payload_adjacency"].shape),
             (2, 10, 4, 4),
         )
         self.assertEqual(
@@ -77,6 +85,18 @@ class SequenceBatchingTests(unittest.TestCase):
         self.assertTrue(
             torch.equal(
                 batch["adjacency"][0, :, :, 2:],
+                torch.zeros(10, 4, 2),
+            )
+        )
+        self.assertTrue(
+            torch.equal(
+                batch["payload_adjacency"][0, :, 2:, :],
+                torch.zeros(10, 2, 4),
+            )
+        )
+        self.assertTrue(
+            torch.equal(
+                batch["payload_adjacency"][0, :, :, 2:],
                 torch.zeros(10, 4, 2),
             )
         )

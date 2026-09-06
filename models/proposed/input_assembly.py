@@ -20,6 +20,7 @@ def assemble_sequence_inputs(record):
     node_sequence = []
     edge_sequence = []
     adjacency_sequence = []
+    payload_adjacency_sequence = []
 
     for step in steps:
         graph = step["graph"]
@@ -59,6 +60,10 @@ def assemble_sequence_inputs(record):
             [0.0 for _ in range(node_count)]
             for _ in range(node_count)
         ]
+        payload_adjacency = [
+            [0.0 for _ in range(node_count)]
+            for _ in range(node_count)
+        ]
 
         for edge in edges:
             source_index = edge["source_index"]
@@ -73,15 +78,20 @@ def assemble_sequence_inputs(record):
             adjacency[source_index][target_index] += float(
                 edge["event_count"]
             )
+            payload_adjacency[source_index][target_index] += float(
+                edge["payload_bytes"]
+            )
 
         edge_sequence.append(edges)
         adjacency_sequence.append(adjacency)
+        payload_adjacency_sequence.append(payload_adjacency)
 
     return {
         "packet_features": packet_sequence,
         "node_features": node_sequence,
         "edges": edge_sequence,
         "adjacency": adjacency_sequence,
+        "payload_adjacency": payload_adjacency_sequence,
         "node_count": node_count,
         "label": record["label"],
     }

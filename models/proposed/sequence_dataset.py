@@ -267,6 +267,7 @@ class GIHSPSequenceDataset(Dataset):
             "packet_features": packet_features,
             "node_features": node_features,
             "adjacency": tensors["adjacency"].squeeze(0),
+            "payload_adjacency": tensors["payload_adjacency"].squeeze(0),
             "target": encode_class_label(record["label"]),
             "label": record["label"],
             "experiment_id": record["experiment_id"],

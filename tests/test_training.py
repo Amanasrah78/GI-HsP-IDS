@@ -15,6 +15,11 @@ class TrainingTests(unittest.TestCase):
             "packet_features": torch.randn(10, 10),
             "node_features": torch.randn(10, node_count, 7),
             "adjacency": torch.zeros(10, node_count, node_count),
+            "payload_adjacency": torch.zeros(
+                10,
+                node_count,
+                node_count,
+            ),
             "target": target,
             "label": {"class": "benign" if target == 0 else "attack"},
             "experiment_id": f"exp-{target}",

@@ -15,6 +15,7 @@ class DeterministicModel(nn.Module):
         node_features,
         adjacency,
         node_mask=None,
+        payload_adjacency=None,
     ):
         predictions = packet_features[:, 0, 0].long()
 
@@ -43,6 +44,7 @@ class TrainingMetricTests(unittest.TestCase):
             "packet_features": packet_features,
             "node_features": torch.zeros(10, 2, 7),
             "adjacency": torch.zeros(10, 2, 2),
+            "payload_adjacency": torch.zeros(10, 2, 2),
             "target": target,
             "label": {"class": "benign" if target == 0 else "attack"},
             "experiment_id": (

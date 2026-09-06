@@ -34,6 +34,11 @@ class DynamicTopologyEncoder(nn.Module):
             hidden_dim,
         )
 
+        self.payload_neighbor_projection = nn.Linear(
+            hidden_dim,
+            hidden_dim,
+        )
+
         self.activation = nn.GELU()
         self.dropout = nn.Dropout(dropout)
 
@@ -50,6 +55,7 @@ class DynamicTopologyEncoder(nn.Module):
         node_features,
         adjacency,
         node_mask=None,
+        payload_adjacency=None,
     ):
         if node_features.ndim != 4:
             raise ValueError(
@@ -84,6 +90,12 @@ class DynamicTopologyEncoder(nn.Module):
             raise ValueError(
                 "Adjacency shape does not match node tensor"
             )
+
+        if payload_adjacency is not None:
+            if tuple(payload_adjacency.shape) != expected_adjacency_shape:
+                raise ValueError(
+                    "Payload adjacency shape does not match node tensor"
+                )
 
         if node_mask is not None:
             expected_mask_shape = (
@@ -126,6 +138,29 @@ class DynamicTopologyEncoder(nn.Module):
             self.self_projection(node_hidden)
             + self.neighbor_projection(neighbor_hidden)
         )
+
+        if payload_adjacency is not None:
+            payload_degree = payload_adjacency.sum(
+                dim=-1,
+                keepdim=True,
+            )
+            safe_payload_degree = payload_degree.clamp_min(1.0)
+            normalized_payload_adjacency = (
+                payload_adjacency / safe_payload_degree
+            )
+
+            payload_neighbor_hidden = torch.matmul(
+                normalized_payload_adjacency,
+                node_hidden,
+            )
+            payload_intensity = torch.log1p(payload_degree)
+            payload_neighbor_hidden = (
+                payload_neighbor_hidden * payload_intensity
+            )
+
+            encoded = encoded + self.payload_neighbor_projection(
+                payload_neighbor_hidden
+            )
         encoded = self.dropout(
             self.activation(encoded)
         )

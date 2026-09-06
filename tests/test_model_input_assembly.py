@@ -136,6 +136,53 @@ class ModelInputAssemblyTests(unittest.TestCase):
             assemble_sequence_inputs(record)
 
 
+class ModelInputPayloadAdjacencyTests(unittest.TestCase):
+    def test_builds_directed_payload_byte_adjacency(self):
+        record = make_sequence_record()
+
+        record["steps"][0]["graph"]["node_count"] = 3
+        record["steps"][0]["graph"]["node_features"].append(
+            {
+                name: 0
+                for name in NODE_FEATURE_NAMES
+            }
+        )
+        record["steps"][0]["graph"]["edges"] = [
+            {
+                "source_index": 0,
+                "target_index": 1,
+                "event_count": 2,
+                "payload_bytes": 200,
+            },
+            {
+                "source_index": 2,
+                "target_index": 0,
+                "event_count": 1,
+                "payload_bytes": 100,
+            },
+        ]
+
+        for step in record["steps"][1:]:
+            step["graph"]["node_count"] = 3
+            step["graph"]["node_features"].append(
+                {
+                    name: 0
+                    for name in NODE_FEATURE_NAMES
+                }
+            )
+
+        assembled = assemble_sequence_inputs(record)
+
+        self.assertEqual(
+            assembled["payload_adjacency"][0],
+            [
+                [0.0, 200.0, 0.0],
+                [0.0, 0.0, 0.0],
+                [100.0, 0.0, 0.0],
+            ],
+        )
+
+
 class ModelInputAdjacencyTests(unittest.TestCase):
     def test_builds_directed_event_count_adjacency(self):
         record = {

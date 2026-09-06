@@ -9,6 +9,7 @@ def move_batch_to_device(batch, device):
         "packet_features": batch["packet_features"].to(device),
         "node_features": batch["node_features"].to(device),
         "adjacency": batch["adjacency"].to(device),
+        "payload_adjacency": batch["payload_adjacency"].to(device),
         "node_mask": batch["node_mask"].to(device),
         "targets": batch["targets"].to(device),
     }
@@ -37,6 +38,7 @@ def train_one_epoch(
             batch["node_features"],
             batch["adjacency"],
             node_mask=batch["node_mask"],
+            payload_adjacency=batch["payload_adjacency"],
         )
 
         logits = outputs["logits"]
@@ -89,6 +91,7 @@ def evaluate_model(
                 batch["node_features"],
                 batch["adjacency"],
                 node_mask=batch["node_mask"],
+                payload_adjacency=batch["payload_adjacency"],
             )
 
             logits = outputs["logits"]

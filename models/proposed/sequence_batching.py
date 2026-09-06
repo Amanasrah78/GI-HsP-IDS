@@ -13,6 +13,7 @@ def collate_gi_hsp_sequences(items):
     packet_batch = []
     node_batch = []
     adjacency_batch = []
+    payload_adjacency_batch = []
     node_masks = []
     targets = []
 
@@ -20,12 +21,18 @@ def collate_gi_hsp_sequences(items):
         packet_features = item["packet_features"]
         node_features = item["node_features"]
         adjacency = item["adjacency"]
+        payload_adjacency = item["payload_adjacency"]
 
         node_count = node_features.shape[1]
 
         if adjacency.shape[1:] != (node_count, node_count):
             raise ValueError(
                 "Adjacency shape does not match node feature count"
+            )
+
+        if payload_adjacency.shape[1:] != (node_count, node_count):
+            raise ValueError(
+                "Payload adjacency shape does not match node feature count"
             )
 
         padded_nodes = torch.zeros(
@@ -46,6 +53,17 @@ def collate_gi_hsp_sequences(items):
         )
         padded_adjacency[:, :node_count, :node_count] = adjacency
 
+        padded_payload_adjacency = torch.zeros(
+            payload_adjacency.shape[0],
+            max_node_count,
+            max_node_count,
+            dtype=payload_adjacency.dtype,
+            device=payload_adjacency.device,
+        )
+        padded_payload_adjacency[
+            :, :node_count, :node_count
+        ] = payload_adjacency
+
         node_mask = torch.zeros(
             max_node_count,
             dtype=torch.bool,
@@ -56,6 +74,7 @@ def collate_gi_hsp_sequences(items):
         packet_batch.append(packet_features)
         node_batch.append(padded_nodes)
         adjacency_batch.append(padded_adjacency)
+        payload_adjacency_batch.append(padded_payload_adjacency)
         node_masks.append(node_mask)
         targets.append(int(item["target"]))
 
@@ -63,6 +82,7 @@ def collate_gi_hsp_sequences(items):
         "packet_features": torch.stack(packet_batch),
         "node_features": torch.stack(node_batch),
         "adjacency": torch.stack(adjacency_batch),
+        "payload_adjacency": torch.stack(payload_adjacency_batch),
         "node_mask": torch.stack(node_masks),
         "targets": torch.tensor(
             targets,

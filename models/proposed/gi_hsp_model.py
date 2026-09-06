@@ -51,6 +51,7 @@ class GIHSPModel(nn.Module):
         node_features,
         adjacency,
         node_mask=None,
+        payload_adjacency=None,
     ):
         flow_embedding = self.flow_encoder(
             packet_features
@@ -60,6 +61,7 @@ class GIHSPModel(nn.Module):
             node_features,
             adjacency,
             node_mask=node_mask,
+            payload_adjacency=payload_adjacency,
         )
 
         fused_embedding, fusion_gate = self.fusion(
