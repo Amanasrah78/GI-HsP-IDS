@@ -1,4 +1,5 @@
 import argparse
+import json
 import random
 from pathlib import Path
 
@@ -18,6 +19,43 @@ def set_seed(seed):
     torch.manual_seed(seed)
 
 
+def write_metrics(
+    output_path,
+    model_name,
+    seed,
+    metrics,
+):
+    output_path = Path(output_path)
+    output_path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    payload = {
+        "model": model_name,
+        "seed": seed,
+        "test_metrics": metrics,
+    }
+
+    temporary_path = output_path.with_name(
+        output_path.name + ".tmp"
+    )
+
+    with temporary_path.open(
+        "w",
+        encoding="utf-8",
+    ) as handle:
+        json.dump(
+            payload,
+            handle,
+            indent=2,
+            sort_keys=True,
+        )
+        handle.write("\n")
+
+    temporary_path.replace(output_path)
+
+
 def build_data_loader(dataset, batch_size, num_workers, shuffle):
     return DataLoader(
         dataset,
@@ -33,6 +71,10 @@ def main():
     parser.add_argument(
         "--config",
         default="configs/gi_hsp_training.yaml",
+    )
+    parser.add_argument(
+        "--metrics-output",
+        default=None,
     )
     args = parser.parse_args()
 
@@ -167,5 +209,13 @@ def main():
         f"test_confusion_matrix={test_metrics['confusion_matrix']} "
         f"test_sample_count={test_metrics['sample_count']}"
     )
+
+    if args.metrics_output is not None:
+        write_metrics(
+            args.metrics_output,
+            model_name=config["model"]["name"],
+            seed=seed,
+            metrics=test_metrics,
+        )
 if __name__ == "__main__":
     main()

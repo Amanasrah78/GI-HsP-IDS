@@ -1,10 +1,14 @@
+import json
+import tempfile
 import unittest
+from pathlib import Path
 
 import torch
 
 from models.proposed.train_gi_hsp import (
     build_data_loader,
     set_seed,
+    write_metrics,
 )
 from models.proposed.sequence_batching import collate_gi_hsp_sequences
 
@@ -60,6 +64,34 @@ class TrainGIHSPTests(unittest.TestCase):
             tuple(batch["node_mask"].shape),
             (2, 4),
         )
+
+
+    def test_write_metrics_writes_json(self):
+        metrics = {
+            "loss": 0.5,
+            "accuracy": 0.75,
+            "precision": 0.8,
+            "recall": 0.7,
+            "f1": 0.7466666667,
+            "confusion_matrix": [[3, 1], [1, 2]],
+            "sample_count": 7,
+        }
+
+        with tempfile.TemporaryDirectory() as directory:
+            output_path = Path(directory) / "metrics.json"
+
+            write_metrics(
+                output_path,
+                model_name="gi_hsp",
+                seed=3,
+                metrics=metrics,
+            )
+
+            payload = json.loads(output_path.read_text())
+
+        self.assertEqual(payload["model"], "gi_hsp")
+        self.assertEqual(payload["seed"], 3)
+        self.assertEqual(payload["test_metrics"], metrics)
 
 
 if __name__ == "__main__":
