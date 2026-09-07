@@ -88,6 +88,19 @@ class TrainingTests(unittest.TestCase):
         self.assertGreaterEqual(metrics["accuracy"], 0.0)
         self.assertLessEqual(metrics["accuracy"], 1.0)
 
+        experiment_level = metrics["experiment_level"]
+        self.assertIn("predictions", experiment_level)
+        self.assertEqual(
+            len(experiment_level["predictions"]),
+            experiment_level["sample_count"],
+        )
+
+        for record in experiment_level["predictions"]:
+            self.assertIn("experiment_id", record)
+            self.assertIn("target", record)
+            self.assertIn("prediction", record)
+            self.assertEqual(len(record["mean_logits"]), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -80,6 +80,7 @@ def evaluate_model(
     total_predictions = []
     experiment_logits = {}
     experiment_targets = {}
+    experiment_gates = {}
 
     with torch.no_grad():
         for batch in data_loader:
@@ -109,6 +110,16 @@ def evaluate_model(
 
             batch_targets = batch["targets"].cpu().tolist()
             batch_logits = logits.detach().cpu()
+            batch_gates = None
+
+            if "fusion_gate" in outputs:
+                batch_gates = (
+                    outputs["fusion_gate"]
+                    .detach()
+                    .cpu()
+                    .mean(dim=1)
+                    .tolist()
+                )
 
             total_targets.extend(batch_targets)
             total_predictions.extend(predictions.cpu().tolist())
@@ -127,8 +138,16 @@ def evaluate_model(
                 else:
                     experiment_targets[experiment_id] = target
                     experiment_logits[experiment_id] = []
+                    experiment_gates[experiment_id] = []
 
                 experiment_logits[experiment_id].append(sample_logits)
+
+            if batch_gates is not None:
+                for experiment_id, sample_gate in zip(
+                    experiment_ids,
+                    batch_gates,
+                ):
+                    experiment_gates[experiment_id].append(sample_gate)
 
     if total_samples == 0:
         raise ValueError("Evaluation loader contains no samples")
@@ -199,6 +218,7 @@ def evaluate_model(
 
     experiment_targets_list = []
     experiment_predictions = []
+    experiment_prediction_records = []
     experiment_loss = 0.0
 
     for experiment_id, logits_list in experiment_logits.items():
@@ -208,6 +228,20 @@ def evaluate_model(
 
         experiment_targets_list.append(target)
         experiment_predictions.append(prediction)
+        record = {
+            "experiment_id": experiment_id,
+            "target": target,
+            "prediction": prediction,
+            "mean_logits": mean_logits.tolist(),
+        }
+
+        if experiment_gates.get(experiment_id):
+            record["fusion_gate_mean"] = (
+                sum(experiment_gates[experiment_id])
+                / len(experiment_gates[experiment_id])
+            )
+
+        experiment_prediction_records.append(record)
 
         experiment_loss += criterion(
             mean_logits.unsqueeze(0),
@@ -334,5 +368,6 @@ def evaluate_model(
                 ],
             ],
             "sample_count": experiment_sample_count,
+            "predictions": experiment_prediction_records,
         },
     }
