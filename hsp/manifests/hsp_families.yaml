@@ -1,0 +1,27 @@
+version: 1
+
+goals:
+
+  dos:
+    seen:
+      - dos_rate
+      - dos_burst
+    unseen:
+      - dos_concurrency
+      - dos_source_distribution
+
+  bruteforce:
+    seen:
+      - brute_interval
+      - brute_connection_reuse
+    unseen:
+      - brute_parallel_workers
+      - brute_credential_order
+
+  reconnaissance:
+    seen:
+      - recon_scan_rate
+      - recon_port_order
+    unseen:
+      - recon_parallel_scan
+      - recon_target_order

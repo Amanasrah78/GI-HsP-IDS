@@ -1,0 +1,24 @@
+protocol_valid:
+  required: true
+  description: >
+    Generated traffic must remain valid under the relevant
+    network/application protocol.
+
+goal_preserved:
+  required: true
+  description: >
+    The perturbation must preserve the malicious objective
+    of the original attack.
+
+attacker_feasible:
+  required: true
+  description: >
+    The perturbation must be realizable by changing attacker-side
+    execution parameters, tools, timing, concurrency, or connection
+    behavior without editing detector feature vectors directly.
+
+feature_editing:
+  allowed: false
+
+detector_access:
+  required: false
