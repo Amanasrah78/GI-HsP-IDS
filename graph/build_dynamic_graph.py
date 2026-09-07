@@ -23,8 +23,17 @@ def build_snapshots(
         reader = csv.DictReader(f)
 
         for row in reader:
+            start = float(row["ts"])
+            duration = (
+                0.0
+                if row["duration"] in ("", "-", None)
+                else float(row["duration"])
+            )
+
             events.append({
-                "ts": float(row["ts"]),
+                "ts": start,
+                "end_ts": start + max(duration, 0.0),
+                "duration": max(duration, 0.0),
                 "src": row["id.orig_h"],
                 "dst": row["id.resp_h"],
                 "payload_len": (
@@ -41,29 +50,81 @@ def build_snapshots(
         }),
     })
 
-    for event in events:
-        window_index = int(
-            math.floor(
-                (event["ts"] - start_ts) / window_seconds
-            )
-        )
-
-        snapshot = snapshots[window_index]
-        snapshot["nodes"].add(event["src"])
-        snapshot["nodes"].add(event["dst"])
-
-        edge = snapshot["edges"][
-            (event["src"], event["dst"])
-        ]
-        edge["event_count"] += 1
-        edge["payload_bytes"] += event["payload_len"]
-
-    output = []
-
     total_duration = end_ts - start_ts
     window_count = int(
         math.floor(total_duration / window_seconds)
     )
+
+    for event in events:
+        event_start = max(event["ts"], start_ts)
+        event_end = min(event["end_ts"], end_ts)
+
+        if event["duration"] <= 0.0:
+            event_end = event_start
+
+        first_window = int(
+            math.floor(
+                (event_start - start_ts) / window_seconds
+            )
+        )
+
+        if event_end > event_start:
+            last_window = int(
+                math.floor(
+                    (
+                        math.nextafter(event_end, event_start)
+                        - start_ts
+                    )
+                    / window_seconds
+                )
+            )
+        else:
+            last_window = first_window
+
+        first_window = max(first_window, 0)
+        last_window = min(last_window, window_count - 1)
+
+        if first_window > last_window:
+            continue
+
+        for window_index in range(
+            first_window,
+            last_window + 1,
+        ):
+            window_start = (
+                start_ts + window_index * window_seconds
+            )
+            window_end = window_start + window_seconds
+
+            snapshot = snapshots[window_index]
+            snapshot["nodes"].add(event["src"])
+            snapshot["nodes"].add(event["dst"])
+
+            edge = snapshot["edges"][
+                (event["src"], event["dst"])
+            ]
+            edge["event_count"] += 1
+
+            if event["duration"] > 0.0:
+                overlap = max(
+                    0.0,
+                    min(event_end, window_end)
+                    - max(event_start, window_start),
+                )
+                payload_fraction = (
+                    overlap / event["duration"]
+                )
+                edge["payload_bytes"] += int(
+                    round(
+                        event["payload_len"]
+                        * payload_fraction
+                    )
+                )
+            else:
+                edge["payload_bytes"] += event["payload_len"]
+
+    output = []
+
     discarded_trailing_seconds = (
         total_duration - (window_count * window_seconds)
     )

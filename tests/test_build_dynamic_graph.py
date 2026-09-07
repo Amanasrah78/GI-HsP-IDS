@@ -107,5 +107,73 @@ class DynamicGraphTests(unittest.TestCase):
             )
 
 
+
+class DynamicGraphOverlapTests(unittest.TestCase):
+    def test_long_lived_connection_spans_overlapping_windows(self):
+        with tempfile.TemporaryDirectory() as directory:
+            csv_path = Path(directory) / "flows.csv"
+
+            fieldnames = [
+                "ts",
+                "id.orig_h",
+                "id.orig_p",
+                "id.resp_h",
+                "id.resp_p",
+                "proto",
+                "service",
+                "duration",
+                "orig_bytes",
+                "resp_bytes",
+                "orig_pkts",
+                "resp_pkts",
+            ]
+
+            with csv_path.open(
+                "w",
+                newline="",
+                encoding="utf-8",
+            ) as handle:
+                writer = csv.DictWriter(
+                    handle,
+                    fieldnames=fieldnames,
+                )
+                writer.writeheader()
+
+                writer.writerow({
+                    "ts": "1000.0",
+                    "id.orig_h": "10.0.0.1",
+                    "id.orig_p": "40000",
+                    "id.resp_h": "10.0.0.2",
+                    "id.resp_p": "1883",
+                    "proto": "tcp",
+                    "service": "mqtt",
+                    "duration": "12.0",
+                    "orig_bytes": "120",
+                    "resp_bytes": "0",
+                    "orig_pkts": "12",
+                    "resp_pkts": "0",
+                })
+
+            snapshots, _ = build_snapshots(
+                csv_path,
+                window_seconds=5.0,
+                start_ts=1000.0,
+                end_ts=1015.0,
+            )
+
+            self.assertEqual(len(snapshots), 3)
+
+            for snapshot in snapshots:
+                self.assertEqual(len(snapshot["edges"]), 1)
+                self.assertEqual(
+                    snapshot["edges"][0]["source"],
+                    "10.0.0.1",
+                )
+                self.assertEqual(
+                    snapshot["edges"][0]["target"],
+                    "10.0.0.2",
+                )
+
+
 if __name__ == "__main__":
     unittest.main()
