@@ -50,7 +50,7 @@ python3 preprocessing/zeek_mqtt_publish_to_csv.py \
 
 echo "[5/8] Building 5-second dynamic graph..."
 python3 graph/build_dynamic_graph.py \
-    "$MQTT_CSV_FILE" \
+    "$CSV_FILE" \
     5 \
     "$MEASUREMENT_START_TS" \
     "$MEASUREMENT_END_TS" \

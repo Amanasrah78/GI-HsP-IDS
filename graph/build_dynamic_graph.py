@@ -14,24 +14,23 @@ def build_snapshots(
 ):
     events = []
 
+    def to_int(value):
+        if value in ("", "-", None):
+            return 0
+        return int(value)
+
     with csv_path.open(newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
 
         for row in reader:
-            from_client = row["from_client"] == "T"
-
-            if from_client:
-                src = row["id.orig_h"]
-                dst = row["id.resp_h"]
-            else:
-                src = row["id.resp_h"]
-                dst = row["id.orig_h"]
-
             events.append({
                 "ts": float(row["ts"]),
-                "src": src,
-                "dst": dst,
-                "payload_len": int(row["payload_len"] or 0),
+                "src": row["id.orig_h"],
+                "dst": row["id.resp_h"],
+                "payload_len": (
+                    to_int(row["orig_bytes"])
+                    + to_int(row["resp_bytes"])
+                ),
             })
 
     snapshots = defaultdict(lambda: {
@@ -103,7 +102,7 @@ def main():
     if len(sys.argv) != 6:
         print(
             "Usage: python3 graph/build_dynamic_graph.py "
-            "<mqtt_publish.csv> <window_seconds> "
+            "<flows.csv> <window_seconds> "
             "<start_ts> <end_ts> <output.json>"
         )
         sys.exit(1)
