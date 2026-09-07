@@ -1,0 +1,58 @@
+Dataset: MQTTset
+
+Working files:
+- /home/ahmad/datasets-working/MQTTset/Data/FINAL_CSV/train70_reduced.csv
+- /home/ahmad/datasets-working/MQTTset/Data/FINAL_CSV/test30_reduced.csv
+
+Train shape:
+231646 x 34
+
+Test shape:
+99290 x 34
+
+Classes:
+- legitimate
+- dos
+- bruteforce
+- malformed
+- slowite
+- flood
+
+Predictors:
+33
+
+Missing values:
+None observed in train70_reduced.csv
+
+String/categorical fields observed:
+- tcp.flags
+- mqtt.conack.flags
+- mqtt.conflags
+- mqtt.hdrflags
+- mqtt.msg
+- mqtt.protoname
+
+Potential high-cardinality field:
+mqtt.msg (~35695 unique train values)
+
+Near-constant fields observed:
+- mqtt.conack.flags.reserved
+- mqtt.conack.flags.sp
+- mqtt.conflag.qos
+- mqtt.conflag.reserved
+- mqtt.conflag.retain
+- mqtt.conflag.willflag
+- mqtt.sub.qos
+- mqtt.suback.qos
+- mqtt.willmsg
+- mqtt.willmsg_len
+- mqtt.willtopic
+- mqtt.willtopic_len
+
+Primary initial split:
+MQTTset-native reduced 70/30 split
+
+Notes:
+- Raw files preserved unchanged.
+- Train-fitted preprocessing only.
+- High-cardinality MQTT payload field will not be blindly one-hot encoded.
