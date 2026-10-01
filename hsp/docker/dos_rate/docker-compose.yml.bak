@@ -1,0 +1,22 @@
+services:
+  target:
+    image: eclipse-mosquitto:2
+    container_name: hsp-dos-target
+
+  attacker:
+    image: python:3.12-slim
+    container_name: hsp-dos-attacker
+    depends_on:
+      - target
+    volumes:
+      - ./attack:/attack
+    working_dir: /attack
+    command: sleep infinity
+
+  monitor:
+    image: nicolaka/netshoot
+    container_name: hsp-dos-monitor
+    network_mode: "service:target"
+    volumes:
+      - ./captures:/captures
+    command: sleep infinity

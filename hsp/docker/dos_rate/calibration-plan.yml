@@ -1,0 +1,87 @@
+version: 1
+experiment: mqtt_dos_rate_calibration
+
+scope:
+  family: dos_rate
+  mechanism: aggregate MQTT PUBLISH rate
+  purpose: determine the minimum broker-confirmed rate that causes sustained degradation of an independent legitimate MQTT service
+
+environment:
+  network: isolated Docker Compose network
+  target:
+    software: Mosquitto 2.1.2
+    cpu_limit: 0.50
+    memory_limit: 256MiB
+    persistence: false
+  attacker:
+    cpu_limit: 2.00
+    memory_limit: 512MiB
+  probe:
+    cpu_limit: 0.50
+    memory_limit: 128MiB
+  sink:
+    count: 1
+    cpu_limit: 0.25
+    memory_limit: 128MiB
+
+fixed_workload:
+  mqtt_version: "3.1.1"
+  attack_qos: 1
+  attack_payload_bytes: 1024
+  attack_workers: 4
+  attack_duration_seconds: 120
+  baseline_seconds_per_run: 30
+  recovery_seconds_per_run: 30
+  probe_qos: 1
+  probe_rate_messages_per_second: 20
+  probe_warmup_messages: 20
+
+discovery:
+  standalone_baseline_repetitions: 5
+  initial_rates_messages_per_second:
+    - 1000
+    - 2000
+    - 4000
+    - 8000
+    - 16000
+  repetitions_per_discovery_rate: 3
+
+generator_acceptance:
+  minimum_completed_fraction_of_requested_rate: 0.90
+  worker_errors_allowed: 0
+  uncompleted_publications_allowed: 0
+  interpretation: >
+    A condition that fails generator acceptance cannot be used to
+    infer broker capacity. Increase attacker capacity or workers first.
+
+goal_validity:
+  loss_condition:
+    maximum_delivery_ratio: 0.99
+    minimum_consecutive_window_seconds: 10
+  latency_condition:
+    factor_over_paired_baseline_p95: 2.0
+    minimum_absolute_increase_ms: 10.0
+    minimum_consecutive_seconds: 30
+  decision: >
+    A run is goal-valid if either the loss condition or latency
+    condition is satisfied during the attack interval.
+
+threshold_confirmation:
+  repetitions: 5
+  required_goal_valid_runs: 4
+  procedure: >
+    Test the provisional threshold, the immediately lower rate, and
+    intermediate rates when needed. The threshold is the lowest
+    accepted achieved rate that is goal-valid in at least four of
+    five repetitions.
+
+capture_acceptance:
+  kernel_packet_drops_allowed: 0
+  ordered_pcap_required: true
+  attack_publish_reconciliation_required: true
+
+stop_conditions:
+  - target container exits or is OOM-killed
+  - packet capture reports kernel drops
+  - generator completes less than 90 percent of requested rate
+  - generator reports worker errors or uncompleted publications

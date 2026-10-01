@@ -1,0 +1,43 @@
+schema_version: 1
+protocol_id: gi_hsp_v2_train_only_normalization
+
+fit_scope:
+  partition: train
+  unit: unique_active_step
+  include_overlapping_window_duplicates: false
+  use_validation_data: false
+  use_test_data: false
+
+flow_features:
+  presence_feature: step_active
+  preserve_inactive_steps_as_zero: true
+  binary_features:
+    - step_active
+  magnitude_transform: log1p
+  standardization: population_mean_std
+
+node_features:
+  presence_feature: active
+  preserve_inactive_nodes_as_zero: true
+  binary_features:
+    - active
+  magnitude_transform: log1p
+  standardization: population_mean_std
+
+edge_features:
+  presence_rule: flow_count_greater_than_zero
+  preserve_absent_edges_as_zero: true
+  magnitude_transform: log1p
+  standardization: population_mean_std
+
+numerical_policy:
+  zero_variance_feature_output: zero
+  standard_deviation_epsilon: 1.0e-8
+  reject_nonfinite_inputs: true
+
+provenance:
+  save_feature_names: true
+  save_training_capture_ids: true
+  save_data_protocol_sha256: true
+  save_feature_contract_sha256: true
+  save_normalization_protocol_sha256: true

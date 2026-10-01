@@ -1,0 +1,57 @@
+schema_version: 1
+processing_id: gi_hsp_v2_cic_bccc_primary_5s
+status: frozen_before_sequence_index
+dataset: cic_bccc_nrc_tabulariot_2024
+evaluation_role: external_zero_shot_cross_domain_evaluation
+source_protocol: configs/gi_hsp_v2_cic_bccc_primary.yaml
+source_protocol_sha256: f108344ad8e2a328211e6f1e04c7b74bc72d65847554d68da2b7dfd9a99ba1ac
+data_quality_amendment: configs/gi_hsp_v2_cic_bccc_primary_data_quality_amendment.yaml
+data_quality_amendment_sha256: b090033664e7c9cc9064048e3f1b30943259579c8c590be77006a9185d48a031
+canonical_store: datasets/processed/gi_hsp_v2/cic_bccc_primary.sqlite
+canonical_store_summary: datasets/processed/gi_hsp_v2/cic_bccc_primary.sqlite.summary.json
+canonical_store_sha256: bdc9a04966f5a394c29188541ac2fc4c84aefedeac33f0545dc3613f5bb3d1a3
+canonical_row_count: 9843262
+quality_correction_count: 5
+temporal_feasibility_audit: results/gi_hsp_v2/cic_bccc_temporal_feasibility.json
+temporal_feasibility_audit_sha256: 90c626619408274a0107d9aae8ce6e0035320a2f40f27b3c732b76bd4668bc85
+capture_count: 84
+expected_window_count: 8280
+expected_windows_by_label:
+  0: 5397
+  1: 2883
+expected_windows_by_domain:
+  aci_iot_2023: 1768
+  edge_iiotset_2022: 3198
+  iomt_2024: 2539
+  iot_2022: 313
+  iot_hcrl_2019: 133
+  mqtt_iot_ids_2020: 329
+sequence_index: datasets/processed/gi_hsp_v2/cic_bccc_primary_sequence_index_5s.sqlite
+temporal_representation:
+  bin_seconds: 5
+  sequence_length: 10
+  window_length_seconds: 50
+  evaluation_stride_seconds: 50
+  require_observed_flow_per_window: true
+evaluation:
+  partition_name: test
+  mqttset_training_folds:
+  - 1
+  - 2
+  - 3
+  - 4
+  confirmatory_seeds:
+  - 5
+  - 6
+  - 7
+  - 8
+  - 9
+  - 10
+  - 11
+  - 12
+  - 13
+  - 14
+  fit_normalization_on_external_data: false
+  threshold: 0.5
+  primary_aggregation: unweighted_macro_mean_across_source_domains
+  report_per_source_domain: true

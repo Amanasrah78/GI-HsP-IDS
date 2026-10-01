@@ -290,14 +290,106 @@ def main():
         manifest = yaml.safe_load(f)
 
     try:
-        validate_hsp_label(manifest["label"])
+        label = manifest["label"]
+        validate_hsp_label(label)
         print("[OK]   Manifest label matches HsP taxonomy")
 
-        validate_attack_provenance(
-            manifest["label"],
-            manifest["attack_provenance"],
+        attack_provenance = manifest.get(
+            "attack_provenance"
         )
-        print("[OK]   Manifest attack provenance is consistent")
+
+        if label["class"] == "attack":
+            if not isinstance(
+                attack_provenance,
+                dict,
+            ):
+                raise ValueError(
+                    "Attack experiment requires "
+                    "attack_provenance"
+                )
+
+            validate_attack_provenance(
+                label,
+                attack_provenance,
+            )
+            print(
+                "[OK]   Manifest attack provenance "
+                "is consistent"
+            )
+        else:
+            if attack_provenance is not None:
+                raise ValueError(
+                    "Benign experiment must not define "
+                    "attack provenance"
+                )
+
+            print(
+                "[OK]   Benign manifest correctly omits "
+                "attack provenance"
+            )
+
+            if "expanded_hsp_protocol" in manifest:
+                capture_provenance = manifest.get(
+                    "capture_provenance"
+                )
+
+                if not isinstance(
+                    capture_provenance,
+                    dict,
+                ):
+                    raise ValueError(
+                        "Expanded benign capture requires "
+                        "capture_provenance"
+                    )
+
+                evidence_file = capture_provenance.get(
+                    "evidence_file"
+                )
+                evidence_sha256 = capture_provenance.get(
+                    "evidence_sha256"
+                )
+                execution_success = capture_provenance.get(
+                    "execution_success"
+                )
+
+                if not isinstance(evidence_file, str):
+                    raise ValueError(
+                        "Benign evidence_file is invalid"
+                    )
+
+                evidence_path = Path(evidence_file)
+
+                if not evidence_path.is_file():
+                    raise ValueError(
+                        "Benign evidence file is missing"
+                    )
+
+                if (
+                    not isinstance(evidence_sha256, str)
+                    or len(evidence_sha256) != 64
+                ):
+                    raise ValueError(
+                        "Benign evidence_sha256 is invalid"
+                    )
+
+                if (
+                    sha256_file(evidence_path)
+                    != evidence_sha256
+                ):
+                    raise ValueError(
+                        "Benign evidence SHA-256 mismatch"
+                    )
+
+                if execution_success is not True:
+                    raise ValueError(
+                        "Benign capture execution did not "
+                        "complete successfully"
+                    )
+
+                print(
+                    "[OK]   Expanded benign capture "
+                    "provenance is consistent"
+                )
     except (KeyError, TypeError, ValueError) as exc:
         print(f"[FAIL] Manifest label/provenance invalid: {exc}")
         ok = False
@@ -687,7 +779,7 @@ def main():
             )
 
             if (
-                mqtt_csv_path.exists()
+                csv_path.exists()
                 and isinstance(measurement_start_ts, (int, float))
                 and isinstance(window_seconds, (int, float))
                 and window_seconds > 0
@@ -695,62 +787,135 @@ def main():
                 and snapshot_count >= 0
             ):
                 expected_edges = {}
-                invalid_event_times = 0
                 analysis_end_ts = (
                     measurement_start_ts
                     + snapshot_count * window_seconds
                 )
 
-                for row in mqtt_rows:
+                for row in rows:
                     try:
-                        event_ts = float(row["ts"])
-                        payload_len = int(row["payload_len"])
+                        flow_start = float(row["ts"])
+                        duration = (
+                            0.0
+                            if row["duration"] in ("", "-", None)
+                            else float(row["duration"])
+                        )
+                        orig_bytes = (
+                            0
+                            if row["orig_bytes"] in ("", "-", None)
+                            else int(row["orig_bytes"])
+                        )
+                        resp_bytes = (
+                            0
+                            if row["resp_bytes"] in ("", "-", None)
+                            else int(row["resp_bytes"])
+                        )
                     except (TypeError, ValueError, KeyError):
                         continue
 
-                    if event_ts < measurement_start_ts:
-                        invalid_event_times += 1
-                        continue
+                    duration = max(duration, 0.0)
+                    flow_end = flow_start + duration
+                    event_start = max(
+                        flow_start,
+                        measurement_start_ts,
+                    )
+                    event_end = min(
+                        flow_end,
+                        analysis_end_ts,
+                    )
 
-                    if event_ts >= analysis_end_ts:
-                        # Valid event in the intentionally discarded
-                        # incomplete trailing interval.
-                        continue
+                    if duration <= 0.0:
+                        event_end = event_start
 
-                    window_index = int(
+                    first_window = int(
                         math.floor(
                             (
-                                event_ts
+                                event_start
                                 - measurement_start_ts
                             )
                             / window_seconds
                         )
                     )
 
-                    if row["from_client"] == "T":
-                        source = row["id.orig_h"]
-                        target = row["id.resp_h"]
+                    if event_end > event_start:
+                        last_window = int(
+                            math.floor(
+                                (
+                                    math.nextafter(
+                                        event_end,
+                                        event_start,
+                                    )
+                                    - measurement_start_ts
+                                )
+                                / window_seconds
+                            )
+                        )
                     else:
-                        source = row["id.resp_h"]
-                        target = row["id.orig_h"]
+                        last_window = first_window
 
-                    key = (window_index, source, target)
-
-                    if key not in expected_edges:
-                        expected_edges[key] = {
-                            "event_count": 0,
-                            "payload_bytes": 0,
-                        }
-
-                    expected_edges[key]["event_count"] += 1
-                    expected_edges[key]["payload_bytes"] += (
-                        payload_len
+                    first_window = max(first_window, 0)
+                    last_window = min(
+                        last_window,
+                        snapshot_count - 1,
                     )
+
+                    if first_window > last_window:
+                        continue
+
+                    source = row["id.orig_h"]
+                    target = row["id.resp_h"]
+                    payload_length = orig_bytes + resp_bytes
+
+                    for window_index in range(
+                        first_window,
+                        last_window + 1,
+                    ):
+                        window_start = (
+                            measurement_start_ts
+                            + window_index * window_seconds
+                        )
+                        window_end = (
+                            window_start + window_seconds
+                        )
+                        key = (
+                            window_index,
+                            source,
+                            target,
+                        )
+
+                        edge = expected_edges.setdefault(
+                            key,
+                            {
+                                "event_count": 0,
+                                "payload_bytes": 0,
+                            },
+                        )
+                        edge["event_count"] += 1
+
+                        if duration > 0.0:
+                            overlap = max(
+                                0.0,
+                                min(event_end, window_end)
+                                - max(event_start, window_start),
+                            )
+                            edge["payload_bytes"] += int(
+                                round(
+                                    payload_length
+                                    * overlap
+                                    / duration
+                                )
+                            )
+                        else:
+                            edge["payload_bytes"] += (
+                                payload_length
+                            )
 
                 actual_edges = {}
 
                 for snapshot in snapshots:
-                    window_index = snapshot.get("window_index")
+                    window_index = snapshot.get(
+                        "window_index"
+                    )
 
                     for edge in snapshot.get("edges", []):
                         key = (
@@ -767,21 +932,32 @@ def main():
                             ),
                         }
 
-                if invalid_event_times:
-                    print(
-                        f"[FAIL] {invalid_event_times} MQTT "
-                        "event(s) occur before measurement start"
-                    )
-                    ok = False
-                elif actual_edges == expected_edges:
+                if actual_edges == expected_edges:
                     print(
                         "[OK]   Dynamic graph edge aggregates "
-                        "match MQTT publish CSV"
+                        "match Flow CSV"
                     )
                 else:
+                    missing = (
+                        set(expected_edges) - set(actual_edges)
+                    )
+                    unexpected = (
+                        set(actual_edges) - set(expected_edges)
+                    )
+                    unequal = {
+                        key
+                        for key in (
+                            set(expected_edges) & set(actual_edges)
+                        )
+                        if expected_edges[key] != actual_edges[key]
+                    }
+
                     print(
                         "[FAIL] Dynamic graph edge aggregates "
-                        "do not match MQTT publish CSV"
+                        "do not match Flow CSV "
+                        f"(missing={len(missing)}, "
+                        f"unexpected={len(unexpected)}, "
+                        f"unequal={len(unequal)})"
                     )
                     ok = False
 

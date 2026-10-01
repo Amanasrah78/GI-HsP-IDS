@@ -1,0 +1,83 @@
+schema_version: 1
+processing_id: gi_hsp_v2_ciciot2023_pcap_subset_5s_v1
+status: frozen_before_ingestion
+dataset: ciciot2023_pcap_subset
+evaluation_role: external_zero_shot_cross_dataset_raw_pcap
+selection_made_without_model_results: true
+extracted_pcap_root: /home/ahmad/datasets-working/ciciot2023-gi-hsp-pcap-subset
+canonical_store: datasets/processed/gi_hsp_v2/ciciot2023_pcap_subset.sqlite
+canonical_store_summary: datasets/processed/gi_hsp_v2/ciciot2023_pcap_subset.sqlite.summary.json
+artifacts:
+  parent_protocol:
+    path: configs/gi_hsp_v2_ciciot2023_pcap_subset.yaml
+    sha256: 276b0e943b66218430d90719f22a770a767d563abf389b026a3c967b466e0dda
+  extraction_completion:
+    path: results/gi_hsp_v2/ciciot2023/extraction_completion.json
+    sha256: c53ccf46783f9e6cf61c0bd148f8f94effb9de2dc114a7e9ce026b79e71445a2
+  extraction_manifest:
+    path: /home/ahmad/datasets-working/ciciot2023-gi-hsp-pcap-subset/extraction_manifest.json
+    sha256: 94a6504245a93998bfa02635be527597951373a5d3357343cad7dc6357156c31
+  slice_checksums:
+    path: /home/ahmad/datasets-working/ciciot2023-gi-hsp-pcap-subset/SLICE_SHA256SUMS
+    sha256: ff46dc6332c6032db40dae7586e70bcfcb8209fb79941639074983e19fdd964d
+  adapter:
+    path: preprocessing/gi_hsp_v2/ciciot2023_adapter.py
+    sha256: 1d9e89b16d338eae379a86d79ca920b061efbbc40455d2cf6ad033080f5cf770
+  streaming_reader:
+    path: preprocessing/gi_hsp_v2/zeek_conn_stream.py
+    sha256: a966b2473dc2c5ff6c02c6c27d00f112fcfaf3975cb82a4ab588d3541e26d6bb
+  zeek_runner:
+    path: scripts/run-zeek.sh
+    sha256: ad47d670fca4048fd8dc2c698407390fb174de52515c2c8d97ff5b3ce3fb2850
+  ingester:
+    path: preprocessing/gi_hsp_v2/ingest_ciciot2023_pcap_subset.py
+    sha256: f2198462651e64c758f4daaf05719f02a36281f03f533597c49b8dc94bd36839
+  compatibility_smoke:
+    path: results/gi_hsp_v2/ciciot2023-zeek-compatibility-smoke.log
+    sha256: 6c5278721841f8df12e18ce78843a9569df851de16b43c7cf25d0d420ba712e3
+expected:
+  slice_count: 198
+  attack_slice_count: 99
+  benign_slice_count: 99
+  attack_scenario_count: 33
+  source_packet_count: 25616509
+  source_pcap_bytes: 3537440661
+temporal_representation:
+  bin_seconds: 5
+  sequence_length: 10
+  window_length_seconds: 50
+  evaluation_stride_seconds: 50
+  require_observed_flow_per_window: true
+label_mapping:
+  binary_label_source: extraction_manifest
+  attack_source_label: scenario
+  attack_source_category: category
+  benign_source_label: benign
+  benign_source_category: benign
+  attack_goal: null
+  hsp_family: null
+  ground_truth_scope: scenario_level
+zeek:
+  image_reference: zeek/zeek:lts
+  image_id: sha256:73e80e9cd23ff71fd28d158e9a9af5c7b2b0ef5d4036af61521827531347c0e3
+  disable_checksum_validation: true
+  output: conn.log
+ingestion:
+  stream_conn_log: true
+  batch_size: 5000
+  progress_interval_captures: 10
+  commit_after_each_capture: true
+  retain_per_capture_zeek_logs: false
+  retain_intermediate_flow_csv: false
+  atomic_publication: true
+  refuse_overwrite: true
+acceptance_criteria:
+  all_slice_hashes_verified: true
+  capture_count: 198
+  sqlite_integrity_check: ok
+  rejected_flow_rows: 0
+  no_external_fitting: true
+limitations:
+- CICIoT2023 ground truth is assigned at scenario level rather than exact flow level.
+- The canonical store represents Zeek connections, not every packet in each selected interval.
+- The selected 198 windows form a frozen stratified subset rather than the full released corpus.

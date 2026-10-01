@@ -1,0 +1,11 @@
+FROM gi-hsp/hsp-attacker:0.1
+
+COPY requirements-expanded.txt /tmp/requirements-expanded.txt
+
+RUN python3 -m pip install \
+    --no-cache-dir \
+    --requirement /tmp/requirements-expanded.txt
+
+WORKDIR /attack
+
+CMD ["sleep", "infinity"]

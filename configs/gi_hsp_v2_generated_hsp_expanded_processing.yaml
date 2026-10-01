@@ -1,0 +1,17 @@
+schema_version: 1
+processing_id: gi_hsp_v2_generated_hsp_expanded_processing_v1
+status: frozen_before_processing
+
+capture_protocol: configs/gi_hsp_v2_generated_hsp_expanded.yaml
+capture_protocol_sha256: a96fecee400448d05635a4fbd565a7c2f9fd3d92d5250f09ead280acc33dc965
+dataset: generated_hsp_expanded
+
+canonical_store: datasets/processed/gi_hsp_v2/generated_hsp_expanded.sqlite
+sequence_index: datasets/processed/gi_hsp_v2/generated_hsp_expanded_sequence_index_5s.sqlite
+
+artifact_requirements:
+  require_successful_completion_record: true
+  require_manifest_sha256: true
+  require_evidence_sha256: true
+  require_pcap_sha256: true
+  require_unique_pcap_sha256: true

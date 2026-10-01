@@ -1,0 +1,153 @@
+schema_version: 1
+status: frozen_before_implementation_and_training
+selection_made_without_comparator_results: true
+analysis_role: protocol_matched_reproducible_comparator
+comparator:
+  name: E-GraphSAGE
+  condition: e_graphsage_adapted
+  implementation_label: E-GraphSAGE protocol-matched adaptation
+  not_an_exact_notebook_reproduction: true
+  source_repository:
+    path: /home/ahmad/research/gi-hsp-comparators/e_graphsage
+    origin: https://github.com/waimorris/E-GraphSAGE.git
+    commit: e05eb74e586891ec7821a363fc42d6944615b945
+    tree: 66794b098ffd58ad3ebaa5dc7c45cf3ce86a12eb
+    license: Apache-2.0
+adaptation_rationale:
+- The released implementation performs flow-edge classification, whereas the frozen
+  GI-HSP task uses 50-second window decisions.
+- The released notebooks use random flow-level splits that are incompatible with
+  the frozen capture-aware fold protocol.
+- The released NetFlow notebooks randomize source IP addresses, which is incompatible
+  with identity-retaining graph evaluation.
+- The adaptation retains edge-feature-aware GraphSAGE message construction while
+  using the common frozen data, normalization, model-selection, and evaluation contracts.
+data:
+  training_dataset: mqttset
+  flow_store: datasets/processed/gi_hsp_v2/mqttset_canonical.sqlite
+  sequence_index: datasets/processed/gi_hsp_v2/mqttset_sequence_index_5s.sqlite
+  normalization_artifact_template: results/gi_hsp_v2/normalization/mqttset-fold-{fold}-identity-5s.json
+  graph_view: identity
+  bin_seconds: 5
+  sequence_length: 10
+  window_length_seconds: 50
+  tensor_representations:
+    training: dense
+    large_external_graphs: sparse
+  node_identity_policy: retain canonical endpoint identity within each window
+  edge_features:
+  - flow_count
+  - packet_count
+  - payload_bytes
+  labels: frozen window-level binary labels
+  no_edge_label_supervision: true
+architecture:
+  family: edge_feature_aware_graphsage
+  message_passing_layers: 1
+  hidden_dimension: 64
+  node_initialization:
+    policy: constant_ones
+    width: 3
+    active_nodes_only: true
+  edge_direction_policy: symmetrize each occupied canonical directed edge for message
+    passing, matching the released undirected NetworkX MultiGraph construction
+  message_function: linear(concatenate(source_node_state, edge_features))
+  message_aggregation: mean
+  node_update: relu(linear(concatenate(previous_node_state, mean_neighbor_message)))
+  dropout: 0.1
+  edge_readout: relu(linear(concatenate(updated_source_state, updated_destination_state)))
+  within_bin_pooling: mean_over_occupied_canonical_edges
+  empty_bin_embedding: all_zeros
+  temporal_encoder:
+    type: gru
+    layers: 1
+    input_dimension: 64
+    hidden_dimension: 64
+    output: final_hidden_state
+  window_classifier:
+    type: linear
+    input_dimension: 64
+    class_count: 2
+training:
+  seeds:
+  - 5
+  - 6
+  - 7
+  - 8
+  - 9
+  - 10
+  - 11
+  - 12
+  - 13
+  - 14
+  folds:
+  - 1
+  - 2
+  - 3
+  - 4
+  run_count: 40
+  optimizer:
+    name: adam
+    learning_rate: 0.0001
+    weight_decay: 0.0
+  epochs: 25
+  gradient_clip_norm: 1.0
+  early_stopping_patience: 5
+  selection_metric: auprc
+  selection_tie_breaker: loss
+  balanced_batch_ratio: 1.0
+  rotate_benign_sample_across_epochs: true
+  loss: cross_entropy
+  batch_size: 64
+  no_post_result_hyperparameter_tuning: true
+evaluation:
+  threshold: 0.5
+  preserve_natural_class_distribution: true
+  report_per_attack_scenario_recall: true
+  primary_metrics:
+  - auprc
+  - balanced_accuracy
+  - mcc
+  secondary_metrics:
+  - auroc
+  - accuracy
+  - precision
+  - recall
+  - specificity
+  - f1
+  independent_inference_unit: training_seed
+  fold_aggregation: macro_mean_within_seed
+  external_evaluation: zero_shot_without_refitting
+prohibited_deviations:
+- random flow-level train-test splitting
+- normalization fitted outside the training partition
+- source-address randomization
+- external-dataset adaptation
+- threshold tuning on external datasets
+- hyperparameter changes after observing comparator results
+expected_outputs:
+  experiment_condition: e_graphsage_adapted
+  mqttset_training_runs: 40
+  checkpoint_root: results/gi_hsp_v2/comparisons/experiments
+bound_artifacts:
+- path: configs/gi_hsp_v2_confirmatory_replication.yaml
+  sha256: 75271c3fc2be9a49d2c3ce333403ef1d7cc72b4a46ea0a7ab92c23905cb7faf1
+- path: configs/gi_hsp_v2_confirmatory_replication.yaml.sha256
+  sha256: 4756e8aa93d747c618cd00487a4a550d77f2a3ce2c0e2da37d40b4184275ddc3
+- path: configs/gi_hsp_v2_training_topology_only.yaml
+  sha256: 8a371e8c367594c4bd7793e4dd0c5ff7adbb8c6b6bf69804b5f35ce19abdc7a7
+- path: results/gi_hsp_v2/comparisons/pre_model_audits/e_graphsage_source_compatibility_audit.txt
+  sha256: 3f4a337bbea6882d9774be187cf7f72a326225e880f5502658c417f239a91c96
+- path: results/gi_hsp_v2/comparisons/pre_model_audits/e_graphsage_gihsp_integration_audit.txt
+  sha256: e1d3d69fc73accaf445c16df4141c044ca715a293a90dee52f54e5a9bbe00016
+- path: results/gi_hsp_v2/comparisons/pre_model_audits/e_graphsage_integration_interfaces.txt
+  sha256: 19f70a554ba43d818a81d64f18ad56a653d83317c98a07dfc45b284cf3a4a191
+- path: results/gi_hsp_v2/comparisons/pre_model_audits/comparator_repository_ledger.json
+  sha256: 38fb30551e021cd0c67ce9dd0c02c998ae37675fc268822f9eac1c40b2f5ca3a
+limitations:
+- This is a protocol-matched adaptation because the released implementation does
+  not define window-level temporal classification.
+- The common canonical graph contract exposes three aggregated edge features rather
+  than each source dataset's original tabular feature set.
+- Performance must not be presented as a direct reproduction of the source paper's
+  reported numbers.
