@@ -1,0 +1,103 @@
+schema_version: 1
+protocol_id: gi_hsp_v2_public_data
+
+canonical_stores:
+  mqttset: datasets/processed/gi_hsp_v2/mqttset_canonical.sqlite
+  xiiotid: datasets/processed/gi_hsp_v2/xiiotid_mqtt_corrected.sqlite
+
+dataset_roles:
+  mqttset:
+    role: in_domain_unseen_attack_scenario_evaluation
+    limitations:
+      - one source capture per attack scenario
+      - attack captures have two endpoint nodes
+      - benign captures have eleven endpoint nodes
+  xiiotid:
+    role: external_cross_dataset_mqtt_stress_test
+    limitations:
+      - severe class imbalance
+      - strong date and label confounding
+  generated_hsp:
+    role: primary_host_space_perturbation_robustness_evaluation
+
+temporal_representation:
+  unit: absolute_stream_second_microflow
+  bin_seconds: 5
+  sequence_length: 10
+  training_stride_seconds: 5
+  evaluation_stride_seconds: 50
+  preserve_empty_seconds: true
+  require_observed_microflow_per_sequence: true
+  label_source: capture_scenario
+
+mqttset_temporal_scope:
+  included_attack_scenarios:
+    - bruteforce
+    - flood
+    - malaria
+    - malformed
+  excluded_attack_scenarios:
+    slowite:
+      reason: all recorded activity occurs within one second
+      evaluation_role: separate_subsecond_burst_evaluation
+
+partition_rules:
+  group_unit: capture_id
+  prohibit_capture_overlap: true
+  prohibit_random_microflow_split: true
+  fit_preprocessing_on_training_only: true
+
+mqttset_folds:
+  - fold: 1
+    test_attack: bruteforce
+    validation_attack: flood
+    test_benign_capture: mqttset-legitimate_1w-2020-06-12
+    validation_benign_capture: mqttset-legitimate_1w-2020-06-13
+
+  - fold: 2
+    test_attack: flood
+    validation_attack: malaria
+    test_benign_capture: mqttset-legitimate_1w-2020-06-14
+    validation_benign_capture: mqttset-legitimate_1w-2020-06-15
+
+  - fold: 3
+    test_attack: malaria
+    validation_attack: malformed
+    test_benign_capture: mqttset-legitimate_1w-2020-06-16
+    validation_benign_capture: mqttset-legitimate_1w-2020-06-17
+
+  - fold: 4
+    test_attack: malformed
+    validation_attack: bruteforce
+    test_benign_capture: mqttset-legitimate_1w-2020-06-18
+    validation_benign_capture: mqttset-legitimate_1w-2020-06-19
+
+class_control:
+  training:
+    strategy: balanced_batches
+    benign_to_attack_ratio: 1.0
+    rotate_benign_sample_across_epochs: true
+  validation:
+    resampling: false
+  test:
+    resampling: false
+
+topology_confound_control:
+  required: true
+  primary_graph: identity
+  full_identity_graph_status: primary
+  control_graph: client_broker_role_collapsed
+  interpretation: >
+    Improvements that disappear after role collapsing may reflect endpoint
+    count differences rather than learned dynamic attack structure.
+
+required_metrics:
+  - auprc
+  - auroc
+  - balanced_accuracy
+  - mcc
+  - precision
+  - recall
+  - specificity
+  - per_attack_scenario_recall
+  - confusion_matrix

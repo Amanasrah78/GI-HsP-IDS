@@ -90,6 +90,17 @@ services:
         ipv4_address: 172.30.0.40
 
 
+  hsp-attacker-expanded:
+    image: gi-hsp/hsp-attacker-expanded:1.0
+    container_name: hsp-attacker-expanded
+    restart: unless-stopped
+    volumes:
+      - ../../hsp/expanded/attacks:/attack:ro
+    networks:
+      gi-hsp-net:
+        ipv4_address: 172.30.0.41
+
+
 networks:
   gi-hsp-net:
     external: true

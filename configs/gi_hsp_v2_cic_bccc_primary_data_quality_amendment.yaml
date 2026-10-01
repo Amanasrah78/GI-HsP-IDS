@@ -1,0 +1,58 @@
+schema_version: 1
+amendment_id: gi_hsp_v2_cic_bccc_negative_duration_policy
+status: frozen_before_ingestion_retry
+parent_protocol: configs/gi_hsp_v2_cic_bccc_primary.yaml
+parent_protocol_sha256: f108344ad8e2a328211e6f1e04c7b74bc72d65847554d68da2b7dfd9a99ba1ac
+compatibility_audit: results/gi_hsp_v2/cic_bccc_numeric_compatibility_audit.json
+compatibility_audit_sha256: 53caf88ca9f440bb4da24477764a5a3fabbd9647d4113e5437004d79be7a7243
+audited_row_count: 9843262
+affected_row_count: 5
+affected_fraction: 5.079616899357144e-07
+affected_field: Flow Duration
+observed_issue: Five source rows contain physically impossible negative flow durations.
+resolution:
+  policy: map_negative_duration_to_missing
+  canonical_value: null
+  retain_rows: true
+  modify_other_fields: false
+  clamp_to_zero: false
+  exclude_rows: false
+rationale: A negative duration has no valid physical interpretation. Mapping it to
+  missing preserves the row and allows the predefined duration-missingness feature
+  to represent the source-data defect without inventing a numeric measurement.
+affected_source_rows:
+- archive_name: CIC-BCCC-Edge-IIoTSet-2022.zip
+  field: Flow Duration
+  issue: negative
+  member_name: Password Attack.csv
+  row_number: 46145
+  source_domain: edge_iiotset_2022
+  value: '-398951'
+- archive_name: CIC-BCCC-Edge-IIoTSet-2022.zip
+  field: Flow Duration
+  issue: negative
+  member_name: Password Attack.csv
+  row_number: 46146
+  source_domain: edge_iiotset_2022
+  value: '-398883'
+- archive_name: CIC-BCCC-Edge-IIoTSet-2022.zip
+  field: Flow Duration
+  issue: negative
+  member_name: Password Attack.csv
+  row_number: 134749
+  source_domain: edge_iiotset_2022
+  value: '-402607'
+- archive_name: CIC-BCCC-Edge-IIoTSet-2022.zip
+  field: Flow Duration
+  issue: negative
+  member_name: Password Attack.csv
+  row_number: 134750
+  source_domain: edge_iiotset_2022
+  value: '-385818'
+- archive_name: CIC-BCCC-MQTTIoT-IDS-2020.zip
+  field: Flow Duration
+  issue: negative
+  member_name: Sparta SSH Brute Force.csv
+  row_number: 128678
+  source_domain: mqtt_iot_ids_2020
+  value: '-1'

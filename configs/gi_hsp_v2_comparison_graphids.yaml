@@ -1,0 +1,229 @@
+schema_version: 1
+status: frozen_before_implementation_and_training_amended
+selection_made_without_comparator_results: true
+analysis_role: protocol_matched_reproducible_comparator
+comparator:
+  name: GraphIDS
+  condition: graphids_adapted
+  implementation_label: GraphIDS protocol-matched adaptation
+  not_an_exact_repository_execution: true
+  source_repository:
+    path: /home/ahmad/research/gi-hsp-comparators/graphids
+    origin: https://github.com/lorenzo9uerra/GraphIDS.git
+    commit: 2072b7cabd7bf65456450cb2ea437099da2b8369
+    tree: e0dfba14d460e7a1ddeb65e5bdf22f25c0e1274a
+    license: Apache-2.0
+adaptation_rationale:
+- The released implementation produces flow-level reconstruction-error anomaly decisions,
+  whereas the frozen GI-HSP task evaluates 50-second windows.
+- The released implementation uses internal flow-level splits that are incompatible
+  with the frozen capture-aware MQTTset folds.
+- The adaptation retains the released edge-aware GraphSAGE encoder, Transformer autoencoder,
+  benign-only training, reconstruction objective, validation PR-AUC checkpoint selection,
+  and validation macro-F1 threshold.
+- Graphs are isolated by frozen 50-second window so one window cannot provide graph
+  context to another evaluation window.
+- The common graph contract supplies three aggregated edge features per occupied five-second
+  directed edge; using this contract keeps the comparator input aligned with GI-HSP
+  and E-GraphSAGE.
+data:
+  training_dataset: mqttset
+  flow_store: datasets/processed/gi_hsp_v2/mqttset_canonical.sqlite
+  sequence_index: datasets/processed/gi_hsp_v2/mqttset_sequence_index_5s.sqlite
+  graph_view: identity
+  bin_seconds: 5
+  sequence_length: 10
+  window_length_seconds: 50
+  feature_unit: occupied_canonical_directed_edge_in_one_five_second_bin
+  node_identity_policy: retain canonical endpoint identity within each window
+  partition_policy: use the frozen MQTTset capture-aware fold assignments
+  training_label_policy: retain only negative windows from the frozen training partition
+  validation_label_policy: retain all frozen validation windows
+  test_label_policy: retain all frozen test windows and conceal labels until final
+    evaluation
+  edge_features:
+  - flow_count
+  - packet_count
+  - payload_bytes
+normalization:
+  method: frozen_common_mqttset_fold_normalization
+  artifact_template: results/gi_hsp_v2/normalization/mqttset-fold-{fold}-identity-5s.json
+  fit_partition: training_partition_only
+  fit_separately_for_each_fold: true
+  no_comparator_specific_refitting: true
+architecture:
+  family: edge_aware_graphsage_transformer_autoencoder
+  graph_scope: one_frozen_50_second_window_with_time_stamped_edges
+  message_passing_layers: 1
+  message: copy_normalized_canonical_edge_features
+  message_direction: incoming_to_destination
+  message_aggregation: mean
+  node_transform: relu(linear(mean_incoming_edges))
+  zero_indegree_node_policy: zero_aggregate_before_linear_transform
+  flow_embedding: linear(concatenate(source_node_embedding,destination_node_embedding))
+  flow_embedding_dimension: 64
+  gnn_dropout: 0.5
+  transformer:
+    type: encoder_decoder_autoencoder
+    input_dimension: 64
+    embedding_dimension: 32
+    attention_heads: 4
+    encoder_layers: 1
+    decoder_layers: 1
+    feedforward_dimension: 256
+    dropout: 0.2
+    positional_encoding: null
+    group_step: 512
+    grouping: seeded_shuffle_of_occupied_time_stamped_edges_then_nonoverlapping_groups
+    training_attention_mask_ratio: 0.15
+    validation_attention_mask_ratio: 0.0
+    test_attention_mask_ratio: 0.0
+    padding: zero
+    padding_excluded_from_loss_and_scores: true
+    edge_group_size: 512
+  flow_embedding_semantics: occupied_time_stamped_canonical_edge_embedding
+training:
+  seeds:
+  - 5
+  - 6
+  - 7
+  - 8
+  - 9
+  - 10
+  - 11
+  - 12
+  - 13
+  - 14
+  folds:
+  - 1
+  - 2
+  - 3
+  - 4
+  run_count: 40
+  optimizer:
+    name: adamw
+    learning_rate: 0.0001
+    encoder_weight_decay: 0.6
+    transformer_weight_decay: 0.03986574357073468
+  epochs: 100
+  early_stopping_patience: 20
+  gradient_clip_norm: 1.0
+  loss: mean_squared_reconstruction_error_over_valid_entries
+  target_gradient_policy: retain_gradient_through_target_embedding
+  checkpoint_selection:
+    metric: validation_window_auprc
+    direction: maximize
+    equal_score_policy: replace_checkpoint_but_do_not_reset_patience
+  threshold_selection:
+    partition: validation
+    unit: window
+    metric: macro_f1
+    candidate_count: 500
+    candidate_range: inclusive_minimum_to_maximum_window_score
+    decision: attack_if_window_score_strictly_exceeds_threshold
+    tie_policy: retain_first_lowest_threshold
+  full_training_partition: true
+  repository_fraction_0_2_disabled: true
+  no_post_result_hyperparameter_tuning: true
+  window_batch_size: 64
+  autoencoder_group_batch_size: 64
+  data_loader_workers: 0
+evaluation:
+  window_score: maximum_occupied_edge_reconstruction_error
+  window_decision: positive_if_any_occupied_edge_strictly_exceeds_the_validation_threshold
+  window_ground_truth: frozen_any_attack_flow_label
+  preserve_natural_test_distribution: true
+  primary_metrics:
+  - auprc
+  - balanced_accuracy
+  - mcc
+  secondary_metrics:
+  - auroc
+  - accuracy
+  - precision
+  - recall
+  - specificity
+  - f1
+  independent_inference_unit: training_seed
+  fold_aggregation: macro_mean_within_seed
+  external_evaluation: zero_shot_without_refitting_or_rethresholding
+  edge_score: mean_squared_reconstruction_error_across_edge_embedding_dimensions
+implementation_constraints:
+  framework: pytorch_without_torch_geometric
+  required_equivalence:
+  - incoming_edge_mean_aggregation
+  - source_destination_edge_readout
+  - transformer_encoder_decoder_reconstruction
+  - valid_entry_mse
+  - validation_window_auprc_checkpoint_selection
+  - validation_window_macro_f1_threshold_selection
+  deterministic_seeded_shuffling: true
+prohibited_deviations:
+- random flow-level train-test splitting
+- normalization fitted outside benign training flows
+- training with attack flows
+- test-label threshold selection
+- test-label checkpoint selection
+- positional encoding
+- external-dataset adaptation
+- post-result hyperparameter changes
+- presenting results as an exact execution of the source repository
+expected_outputs:
+  experiment_condition: graphids_adapted
+  mqttset_training_runs: 40
+  checkpoint_root: results/gi_hsp_v2/comparisons/experiments
+bound_artifacts:
+- path: configs/gi_hsp_v2_confirmatory_replication.yaml
+  sha256: 75271c3fc2be9a49d2c3ce333403ef1d7cc72b4a46ea0a7ab92c23905cb7faf1
+- path: configs/gi_hsp_v2_confirmatory_replication.yaml.sha256
+  sha256: 4756e8aa93d747c618cd00487a4a550d77f2a3ce2c0e2da37d40b4184275ddc3
+- path: configs/gi_hsp_v2_training_topology_only.yaml
+  sha256: 8a371e8c367594c4bd7793e4dd0c5ff7adbb8c6b6bf69804b5f35ce19abdc7a7
+- path: results/gi_hsp_v2/comparisons/pre_model_audits/comparator_repository_ledger.json
+  sha256: 38fb30551e021cd0c67ce9dd0c02c998ae37675fc268822f9eac1c40b2f5ca3a
+- path: results/gi_hsp_v2/comparisons/pre_model_audits/graphids_source_compatibility_audit.txt
+  sha256: 67d433fe14ba8da7954ff45e0fe4d2585336ed51d4649d8cb8ac2e38237076e3
+- path: results/gi_hsp_v2/comparisons/pre_model_audits/graphids_architecture_interfaces.txt
+  sha256: e5768928ca2da0252aad191fb33b3d3ae33df9603851692b0abb669d65432434
+- path: results/gi_hsp_v2/comparisons/pre_model_audits/graphids_model_semantics.txt
+  sha256: 4fe3fd9a65dc01241f34e21bce24abf6ac532aa201737f756f10ce45684315b2
+- path: results/gi_hsp_v2/comparisons/protocol_amendments/graphids_feature_contract_correction/original_protocol.yaml
+  sha256: e42141eff36e031b3a3c77eaaa00c3a49b830a03832e5bc4415756a892cbadbb
+- path: results/gi_hsp_v2/comparisons/protocol_amendments/graphids_feature_contract_correction/original_protocol.sha256
+  sha256: cc6f9cb514e0ae447a57057811516a617dc4d54db3321deb644d29ebc30dae1d
+bound_source_files:
+- path: /home/ahmad/research/gi-hsp-comparators/graphids/models/graphids.py
+  sha256: ecda8b3ca2faca040593a41d7a9ab245b9551dee7112cef18e594ce3824d156a
+- path: /home/ahmad/research/gi-hsp-comparators/graphids/utils/trainers.py
+  sha256: 69e3941a212f145cc9e6a2fe8e7d7e8271439a9079d5f5515bc3e4621dfe5caf
+- path: /home/ahmad/research/gi-hsp-comparators/graphids/utils/dataloaders.py
+  sha256: 3da43c64ece5ef380c26ca5dad6892a45977fe95b563b5ae572efe8ad4aead43
+- path: /home/ahmad/research/gi-hsp-comparators/graphids/configs/NF-CSE-CIC-IDS2018-v3.yaml
+  sha256: dc3755c514e86b6df4675d8e309a63b63a344604806d034ea5121e062fa9813e
+- path: /home/ahmad/research/gi-hsp-comparators/graphids/CITATION.cff
+  sha256: c0be38f57fd1e6ffd29e56f346ca851de42f2c64bc2b27f485115270608f65e9
+- path: /home/ahmad/research/gi-hsp-comparators/graphids/LICENSE
+  sha256: 6e4347d6bc472bf34c00b8c2a7d543e9b333d0e6394e0c85ef856cea41e7a4b8
+limitations:
+- This is a protocol-matched adaptation because the released implementation does not
+  define capture-aware window-level evaluation.
+- Window-isolated graph construction differs from the released split-wide graph and
+  prevents cross-window context.
+- The canonical flow schema differs from the NetFlow feature schemas used by the source
+  repository.
+- The maximum flow-error window score can be sensitive to the number of flows in a
+  window.
+- Performance must not be presented as a direct reproduction of the source paper's
+  reported values.
+- The adaptation reconstructs canonical aggregated graph edges rather than the source
+  repository's individual NetFlow rows.
+pre_training_amendment:
+  previous_protocol_sha256: e42141eff36e031b3a3c77eaaa00c3a49b830a03832e5bc4415756a892cbadbb
+  reason: FLOW_FEATURE_NAMES was identified as a window-level aggregate schema rather
+    than an individual-flow edge schema. The comparator is corrected to use the common
+    canonical graph-edge contract before implementation or training.
+  result_informed: false
+pre_training_batching_clarification:
+  previous_protocol_sha256: 05f63c0b5d9de691fce31b054f4a8386bf0e9e824003bc5c6e67be22ade94e86
+  result_informed: false
+  reason: Specify implementation batch sizes before training.

@@ -1,0 +1,161 @@
+schema_version: 1
+protocol_id: gi_hsp_v2_ciciot2023_raw_pcap_subset_v1
+status: frozen_before_extraction
+analysis_role: protocol_bound_external_zero_shot_raw_pcap_evaluation
+selection_made_without_model_results: true
+repository_commit_at_freeze: cee79106bda5cb22a86d6034c5de25926c7f9540
+source_dataset:
+  name: CICIoT2023
+  official_page: https://www.unb.ca/cic/datasets/iotdataset-2023.html
+  paper: https://doi.org/10.3390/s23135941
+  released_attack_scenario_count: 33
+  released_attack_category_count: 7
+  real_pcap_count: 309
+  original_corpus_size_gib: 547.716
+  ground_truth_scope: scenario_level
+  labeling_basis: The dataset authors label the full traffic captured during each executed
+    scenario as that scenario.
+pre_model_artifacts:
+  candidate_plan:
+    path: results/gi_hsp_v2/ciciot2023/pre_model_audits/ciciot2023_candidate_window_plan.json
+    sha256: e48a73af42b1a2dea625c5752173aa2f3a0e7792720075153873a2e405053633
+  candidate_metadata:
+    path: results/gi_hsp_v2/ciciot2023/pre_model_audits/ciciot2023_candidate_metadata.csv
+    sha256: 6bdb454bdfa8e16794d08370c1db55905b4d8410e184588840bba62c5d1e0886
+  candidate_sources:
+    path: results/gi_hsp_v2/ciciot2023/pre_model_audits/ciciot2023_candidate_sources.txt
+    sha256: 5c471c366729d72b23b5e7867e5f03b9fc7a520d10f1936a9ab10e56c9ca2627
+  source_identity_ledger:
+    path: results/gi_hsp_v2/ciciot2023/pre_model_audits/ciciot2023_candidate_source_ledger.json
+    sha256: 044792fe7496d9ee505dec73d90293b999e01f4ac205d69faf42913a90b764b3
+  tool_versions:
+    path: results/gi_hsp_v2/ciciot2023/pre_model_audits/ciciot2023_tool_versions.txt
+    sha256: 6841dd601637821c1c3f450a9ff87ab420aee24f00df9b5122262701b5207567
+source_selection:
+  selected_source_pcap_count: 37
+  selected_source_bytes: 46074149577
+  attack_source_selection: natural_first_authentic_pcap_per_attack_scenario
+  attack_scenario_count: 33
+  benign_source_count: 4
+  macos_appledouble_files_excluded: true
+  selection_uses_model_outputs: false
+window_selection:
+  bin_seconds: 50
+  utc_aligned: true
+  minimum_packets_per_bin: 100
+  selection_order: first_qualifying_bins_in_capture_order
+  attack_windows_per_scenario: 3
+  attack_window_count: 99
+  benign_windows_by_source:
+  - 25
+  - 25
+  - 25
+  - 24
+  benign_window_count: 99
+  total_window_count: 198
+  expected_windows_by_class:
+    attack: 99
+    benign: 99
+  expected_windows_by_category:
+    benign: 99
+    brute_force: 3
+    ddos: 36
+    dos: 12
+    mirai: 9
+    reconnaissance: 12
+    spoofing: 6
+    web_based: 21
+extraction:
+  implementation: preprocessing/gi_hsp_v2/extract_ciciot2023_pcap_subset.py
+  implementation_sha256: 3472bab32c6e545c3d4f10f41359706b1a4c3139b5f27651007483f2513b86dd
+  input_format: classic_pcap_little_endian_microsecond
+  source_passes: 1
+  preserve_packet_headers_and_payloads: true
+  interval_semantics: start_epoch_inclusive_end_epoch_exclusive
+  mac_output_root: /Volumes/X10 Pro/datasets/CICIoT2023/GI-HSP-selection/extracted-pcaps
+  expected_slice_count: 198
+  refuse_overwrite: true
+  atomic_publication: true
+  verify_full_source_sha256_during_extraction: true
+transfer:
+  destination: /home/ahmad/datasets-working/ciciot2023-gi-hsp-pcap-subset
+  transfer_only_extracted_slices: true
+  verify_extraction_manifest_and_slice_hashes: true
+  copy_full_source_pcaps: false
+canonical_representation:
+  flow_reconstruction: Zeek conn.log
+  retain_endpoint_identity: true
+  bin_seconds: 5
+  sequence_length: 10
+  window_length_seconds: 50
+  fit_normalization_on_external_data: false
+  normalization_source: MQTTset training partition for each fold
+  label_source: scenario_directory
+evaluation:
+  role: external_zero_shot_cross_dataset_evaluation
+  training_dataset: MQTTset
+  conditions:
+  - fused_identity
+  - fused_role_control
+  - flow_transformer
+  - topology_only
+  - flow_mlp_matched
+  - flow_gru_matched
+  confirmatory_seeds:
+  - 5
+  - 6
+  - 7
+  - 8
+  - 9
+  - 10
+  - 11
+  - 12
+  - 13
+  - 14
+  folds:
+  - 1
+  - 2
+  - 3
+  - 4
+  checkpoint_count: 240
+  prediction_evaluation_count: 47520
+  threshold: 0.5
+  threshold_selected_on_external_data: false
+  primary_metrics:
+  - balanced_accuracy
+  - mcc
+  secondary_metrics:
+  - auprc
+  - auroc
+  - recall
+  - specificity
+  - scenario_macro_attack_recall
+  - category_macro_attack_recall
+  primary_inference_unit: training_seed
+  fold_aggregation: macro_mean_within_seed
+  multiple_testing: Holm adjustment within each metric family
+planned_contrasts:
+- fused_identity_vs_flow_transformer
+- fused_identity_vs_topology_only
+- fused_role_control_vs_fused_identity
+- fused_identity_vs_flow_mlp_matched
+- fused_identity_vs_flow_gru_matched
+acceptance_criteria:
+  source_hashes_verified: true
+  slice_count: 198
+  attack_slice_count: 99
+  benign_slice_count: 99
+  attack_scenario_count: 33
+  minimum_packets_per_slice: 100
+  canonical_window_count: 198
+  result_count: 240
+  prediction_count: 47520
+  no_external_fitting: true
+  no_model_based_sample_selection: true
+limitations:
+- The experiment evaluates a frozen stratified subset, not all 309 released PCAPs.
+- Ground truth is scenario-level rather than exact packet-level or flow-level attribution.
+- The activity threshold preferentially retains nonempty, sufficiently populated intervals.
+- Three windows from each attack scenario do not estimate within-scenario temporal variability
+  across the complete corpus.
+- All checkpoints were trained on MQTTset; this is zero-shot transfer without external adaptation.

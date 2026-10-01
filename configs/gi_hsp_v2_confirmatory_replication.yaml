@@ -1,0 +1,88 @@
+schema_version: 1
+protocol_id: gi_hsp_v2_confirmatory_replication_seeds_5_14
+design_status: prospective_replication_after_exploratory_analysis
+
+exploratory_seeds:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+
+confirmatory_seeds:
+  - 5
+  - 6
+  - 7
+  - 8
+  - 9
+  - 10
+  - 11
+  - 12
+  - 13
+  - 14
+
+folds:
+  - 1
+  - 2
+  - 3
+  - 4
+
+conditions:
+  fused_identity:
+    config: configs/gi_hsp_v2_training.yaml
+    architecture: gi_hsp
+    graph_view: identity
+  fused_role_control:
+    config: configs/gi_hsp_v2_training_role_control.yaml
+    architecture: gi_hsp
+    graph_view: client_broker_role_collapsed
+  flow_transformer:
+    config: configs/gi_hsp_v2_training_flow_only.yaml
+    architecture: flow_only
+    graph_view: identity
+  topology_only:
+    config: configs/gi_hsp_v2_training_topology_only.yaml
+    architecture: topology_only
+    graph_view: identity
+  flow_mlp_matched:
+    config: configs/gi_hsp_v2_training_flow_mlp_matched.yaml
+    architecture: flow_mlp
+    graph_view: identity
+  flow_gru_matched:
+    config: configs/gi_hsp_v2_training_flow_gru_matched.yaml
+    architecture: flow_gru
+    graph_view: identity
+
+evaluation_protocols:
+  - mqttset
+  - xiiotid
+  - generated_hsp
+
+primary_metrics:
+  - balanced_accuracy
+  - mcc
+
+planned_contrasts:
+  - fused_identity_vs_flow_transformer
+  - fused_identity_vs_topology_only
+  - fused_role_control_vs_fused_identity
+  - fused_identity_vs_flow_mlp_matched
+  - fused_identity_vs_flow_gru_matched
+
+inference:
+  independent_unit: training_seed
+  fold_aggregation: macro_mean_within_seed
+  test: exact_two_sided_paired_sign_flip
+  confidence_interval: student_t_95_percent
+  multiplicity_correction: holm_within_protocol_and_metric
+  family_size: 5
+  alpha: 0.05
+
+reporting:
+  confirmatory_cohort_is_primary: true
+  exploratory_cohort_reported_separately: true
+  pooled_seeds_0_14_is_sensitivity_only: true
+  failed_or_incomplete_runs_must_be_reported: true
+  thresholds_remain_fixed_at_0_5: true
+  no_posthoc_hyperparameter_tuning: true
+

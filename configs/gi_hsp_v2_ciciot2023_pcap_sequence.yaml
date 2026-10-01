@@ -1,0 +1,43 @@
+schema_version: 1
+status: frozen_before_sequence_index
+dataset: ciciot2023_pcap_subset
+evaluation_role: external_zero_shot_cross_dataset_raw_pcap_evaluation
+selection_made_without_model_results: true
+artifacts:
+  processing_contract:
+    path: configs/gi_hsp_v2_ciciot2023_pcap_processing.yaml
+    sha256: 6350f900c97047437caf47e0b6357862a30dab6d3b87464dbbe767b1bed4ae95
+  canonical_completion:
+    path: results/gi_hsp_v2/ciciot2023/canonical_store_completion.json
+    sha256: 4d0220af7d0f720dce6d74a05eb879c9751bc4a07536d9f7b2ab5eb71e10595d
+  canonical_store:
+    path: datasets/processed/gi_hsp_v2/ciciot2023_pcap_subset.sqlite
+    sha256: c9f3cde8372534edcc1a07f1780d9666063ca9a92aa5727ddad0603295f76624
+  canonical_store_summary:
+    path: datasets/processed/gi_hsp_v2/ciciot2023_pcap_subset.sqlite.summary.json
+    sha256: a73c113f606d6b67528dc5218bc869e1882147c50893b23aa5fdfe0b86a9fdd4
+  extraction_manifest:
+    path: /home/ahmad/datasets-working/ciciot2023-gi-hsp-pcap-subset/extraction_manifest.json
+    sha256: 94a6504245a93998bfa02635be527597951373a5d3357343cad7dc6357156c31
+  builder:
+    path: preprocessing/gi_hsp_v2/build_ciciot2023_pcap_sequence_index.py
+    sha256: 86121b176e4da2680c5fd46b6af1b90160476cb2df9a0023b4533dcce42d3c02
+temporal_representation:
+  bin_seconds: 5
+  sequence_length: 10
+  window_length_seconds: 50
+  evaluation_stride_seconds: 50
+  require_observed_flow_per_window: true
+evaluation:
+  partition_name: test
+  mqttset_training_folds:
+  - 1
+  - 2
+  - 3
+  - 4
+  fit_normalization_on_external_data: false
+expected_window_count: 198
+expected_windows_by_label:
+  0: 99
+  1: 99
+sequence_index: datasets/processed/gi_hsp_v2/ciciot2023_pcap_subset_sequence_index_5s.sqlite

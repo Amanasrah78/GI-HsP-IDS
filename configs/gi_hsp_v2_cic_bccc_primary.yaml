@@ -1,0 +1,117 @@
+schema_version: 1
+protocol_id: gi_hsp_v2_cic_bccc_primary_cross_domain
+status: frozen_before_ingestion
+dataset: cic_bccc_nrc_tabulariot_2024
+evaluation_role: external_zero_shot_cross_domain_evaluation
+source:
+  collection: CIC-BCCC-NRC-TabularIoT-2024
+  archive_directory_supplied_at_runtime: true
+  archives:
+  - archive_name: CIC-BCCC-ACI-IOT-2023.zip
+    source_domain: aci_iot_2023
+    sha256: 5e66b162e91d7d5cd7c26ea72550d7b9dd116b315289d95d77eedfb532878464
+    size_bytes: 52249695
+    analysis_role: class_complete_primary
+  - archive_name: CIC-BCCC-Edge-IIoTSet-2022.zip
+    source_domain: edge_iiotset_2022
+    sha256: 487d40eb4d841c52006a4a07eeb507e2136c5d1eda7a57ae0bb0a075d1c5cbda
+    size_bytes: 191209127
+    analysis_role: class_complete_primary
+  - archive_name: CIC-BCCC-IoMT-2024.zip
+    source_domain: iomt_2024
+    sha256: 1ee3ec18a12211d9728f257250aeda3f71d5ff9e6ee1c6fc70badc9badbfdfb8
+    size_bytes: 227997938
+    analysis_role: class_complete_primary
+  - archive_name: CIC-BCCC-IoT-2022.zip
+    source_domain: iot_2022
+    sha256: 6e0c0ca03301866b5272a704f06af51b412354358cadc6b7bad5457ff3005b60
+    size_bytes: 6970204
+    analysis_role: class_complete_primary
+  - archive_name: CIC-BCCC-IoT-HCRL-2019.zip
+    source_domain: iot_hcrl_2019
+    sha256: 3f1765cf403140b554550ecf8a669752310a575a830ee44be78592a736dd2041
+    size_bytes: 7571363
+    analysis_role: class_complete_primary
+  - archive_name: CIC-BCCC-MQTTIoT-IDS-2020.zip
+    source_domain: mqtt_iot_ids_2020
+    sha256: 3d5ba54b135b56534b52b5abaeba15af0cd5ad92151907c8d68c24c7aed49674
+    size_bytes: 304190066
+    analysis_role: class_complete_primary
+  excluded_archives:
+  - archive_name: CIC-BCCC-IoT-2023-Original Training and Testing.zip
+    reason: attack-only source; reserved for secondary recall-only evaluation
+  - archive_name: CIC-BCCC-TONIoT-2021.zip
+    reason: attack-only source; reserved for secondary recall-only evaluation
+  - archive_name: CIC-BCCC-UQ-IOT-2022.zip
+    reason: attack-only source; reserved for secondary recall-only evaluation
+canonical_mapping:
+  timestamp: Timestamp
+  source_id: Src IP
+  destination_id: Dst IP
+  source_port: Src Port
+  destination_port: Dst Port
+  protocol: Protocol
+  duration_seconds: Flow Duration divided by 1000000
+  source_packets: Total Fwd Packet
+  destination_packets: Total Bwd packets
+  source_bytes: Total Length of Fwd Packet
+  destination_bytes: Total Length of Bwd Packet
+  binary_label: Label
+  source_label: Attack Name
+identity_policy:
+  raw_endpoints_retained: false
+  endpoint_mapping: capture-scoped deterministic SHA-256
+  flow_id_used_as_feature: false
+  service_inference_from_port: false
+capture_policy:
+  unit: source archive, CSV member, and calendar day
+  reason: prevent discontinuous multi-day records from forming one temporal sequence
+timestamp_policy:
+  source_timezone: unspecified
+  interpretation: naive source wall-clock encoded as UTC
+  claim_utc_provenance: false
+temporal_representation:
+  bin_seconds: 5
+  sequence_length: 10
+  window_length_seconds: 50
+  evaluation_stride_seconds: 50
+  require_observed_flow_per_window: true
+evaluation:
+  partition_name: test
+  mqttset_training_folds:
+  - 1
+  - 2
+  - 3
+  - 4
+  confirmatory_seeds:
+  - 5
+  - 6
+  - 7
+  - 8
+  - 9
+  - 10
+  - 11
+  - 12
+  - 13
+  - 14
+  fit_normalization_on_external_data: false
+  threshold: 0.5
+  preserve_natural_class_distribution: true
+  primary_metrics:
+  - balanced_accuracy
+  - mcc
+  secondary_metrics:
+  - auprc
+  - auroc
+  - recall
+  - specificity
+  report_per_source_domain: true
+  aggregate_across_source_domains: unweighted_macro_mean
+independence_policy:
+  treat_collection_as_single_homogeneous_domain: false
+  overlap_note: The embedded IoT-2023 source is excluded from the primary analysis
+    and must not be presented as independent evidence from CICIoT2023.
+limitations:
+- Source timestamps do not establish a common timezone across constituent datasets.
+- Attack labels are benchmark labels, not verified host-space perturbation provenance.
+- Results must be reported per source domain before cross-domain macro-aggregation.

@@ -1,0 +1,77 @@
+schema_version: 1
+protocol_id: gi_hsp_v2_generated_hsp_available_family_pilot
+
+dataset: generated_hsp
+canonical_store: datasets/processed/gi_hsp_v2/generated_hsp_pilot.sqlite
+sequence_index: datasets/processed/gi_hsp_v2/generated_hsp_pilot_sequence_index_5s.sqlite
+evaluation_role: primary_host_space_perturbation_robustness_evaluation
+study_scope: available_family_pilot
+
+source:
+  manifest_directory: experiments
+  processed_flow_directory: results/processed
+  clip_to_manifest_measurement_interval: true
+  verify_pcap_sha256: true
+
+capture_ids:
+  - hsp-nmap-e2e-001
+  - hsp-nmap-e2e-002
+  - hsp-nmap-e2e-003
+  - hsp-nmap-e2e-004
+  - hsp-nmap-e2e-005
+  - hsp-nmap-e2e-006
+  - hsp-mqtt-auth-e2e-001
+  - hsp-mqtt-auth-e2e-002
+  - hsp-mqtt-auth-e2e-003
+  - hsp-mqtt-auth-e2e-004
+  - benign-mqtt-e2e-013
+  - benign-mqtt-e2e-014
+  - benign-mqtt-e2e-015
+  - benign-mqtt-e2e-016
+  - benign-mqtt-e2e-017
+  - benign-mqtt-e2e-018
+  - benign-mqtt-e2e-019
+  - benign-mqtt-e2e-020
+
+available_attack_goals:
+  reconnaissance:
+    families:
+      - nmap
+    capture_count: 6
+  authentication:
+    families:
+      - mosquitto_clients
+    capture_count: 4
+
+temporal_representation:
+  bin_seconds: 5
+  sequence_length: 10
+  window_length_seconds: 50
+  evaluation_stride_seconds: 50
+  require_observed_flow_per_window: true
+
+evaluation:
+  partition_name: test
+  mqttset_training_folds:
+    - 1
+    - 2
+    - 3
+    - 4
+  seeds:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+  fit_normalization_on_generated_hsp: false
+  threshold: 0.5
+  preserve_natural_class_distribution: true
+  report_per_hsp_family_recall: true
+  report_per_attack_goal_recall: true
+
+limitations:
+  - only nmap and mosquitto_clients HsP families are represented
+  - each represented attack goal has only one tool family
+  - results do not establish cross-tool invariance within an attack goal
+  - the evaluation contains eighteen independent capture windows
+  - legacy dynamic graph artifacts are excluded and rebuilt from canonical flows

@@ -1,0 +1,141 @@
+schema_version: 1
+protocol_id: gi_hsp_v2_cse_cic_ids2018_identity_subset_5s
+status: frozen_before_ingestion
+dataset: cse_cic_ids2018_identity_subset
+display_name: CSE-CIC-IDS2018 identity-retaining 20 February subset
+evaluation_role: protocol_bound_external_extension
+selection_made_without_model_results: true
+
+scope:
+  release_file_count: 10
+  included_file_count: 1
+  included_file: Thuesday-20-02-2018_TrafficForML_CICFlowMeter.csv
+  included_scenario: DDoS attacks-LOIC-HTTP
+  excluded_file_count: 9
+  exclusion_rule: missing_endpoint_identity_fields
+  excluded_files:
+    - Friday-02-03-2018_TrafficForML_CICFlowMeter.csv
+    - Friday-16-02-2018_TrafficForML_CICFlowMeter.csv
+    - Friday-23-02-2018_TrafficForML_CICFlowMeter.csv
+    - Thursday-01-03-2018_TrafficForML_CICFlowMeter.csv
+    - Thursday-15-02-2018_TrafficForML_CICFlowMeter.csv
+    - Thursday-22-02-2018_TrafficForML_CICFlowMeter.csv
+    - Wednesday-14-02-2018_TrafficForML_CICFlowMeter.csv
+    - Wednesday-21-02-2018_TrafficForML_CICFlowMeter.csv
+    - Wednesday-28-02-2018_TrafficForML_CICFlowMeter.csv
+  exclusion_reason: >-
+    These files omit source IP, destination IP, and source port.
+    Endpoint identities must not be inferred or synthesized for topology
+    evaluation.
+
+source:
+  default_directory: /home/ahmad/datasets-working/cse-cic-ids2018-identity-subset
+  file_name: Thuesday-20-02-2018_TrafficForML_CICFlowMeter.csv
+  file_size_bytes: 4054925350
+  file_sha256: 7287a4d7740a1dddbf330ceb2beb6a4889d33ba63674558a68b5eb50d16711df
+  expected_row_count: 7948748
+  expected_column_count: 84
+
+audits:
+  schema:
+    path: results/gi_hsp_v2/cse_cic_ids2018/identity_subset_schema_audit.json
+    sha256: 507cdb31a70ac81edc2793ae362a73d34ca59028cbc38bb6264c90502b9b2692
+  temporal:
+    path: results/gi_hsp_v2/cse_cic_ids2018/identity_subset_temporal_audit.json
+    sha256: e094c898e7448b9d949e7e4c848d204dacf1014fa9a6ece2379c1b9c4b3e6b28
+
+canonical_mapping:
+  timestamp:
+    source: Timestamp
+    interpretation: naive_source_wall_clock_encoded_as_utc
+  source_id:
+    source: Src IP
+    transformation: capture_scoped_opaque_sha256
+  destination_id:
+    source: Dst IP
+    transformation: capture_scoped_opaque_sha256
+  source_port:
+    source: Src Port
+  destination_port:
+    source: Dst Port
+  protocol:
+    source: Protocol
+    interpretation: numeric_ip_protocol_identifier
+  service:
+    value: unknown
+  duration_seconds:
+    source: Flow Duration
+    scale: 0.000001
+    source_unit: microseconds
+  source_bytes:
+    source: TotLen Fwd Pkts
+  destination_bytes:
+    source: TotLen Bwd Pkts
+  source_packets:
+    source: Tot Fwd Pkts
+  destination_packets:
+    source: Tot Bwd Pkts
+  source_label:
+    source: Label
+  source_category:
+    value: cse_cic_ids2018_20_february
+  attack_goal:
+    value: null
+  hsp_family:
+    value: null
+
+labels:
+  benign_source_label: Benign
+  attack_source_label: DDoS attacks-LOIC-HTTP
+  benign_binary_label: 0
+  attack_binary_label: 1
+  window_policy: any_attack_flow
+  window_policy_definition: >-
+    A window is positive if at least one constituent flow has binary label
+    one; otherwise it is benign.
+  mixed_positive_windows_expected: 95
+
+ordering:
+  source_rows_are_chronologically_ordered: false
+  observed_monotonicity_violations: 2977911
+  canonical_order:
+    - timestamp
+    - record_id
+  record_id: zero_padded_source_row_number
+  equal_timestamp_tie_breaker: source_row_number
+  raw_file_rewrite: false
+
+temporal_representation:
+  bin_seconds: 5
+  sequence_length: 10
+  window_length_seconds: 50
+  evaluation_stride_seconds: 50
+  require_observed_flow_per_window: true
+  expected_window_count: 864
+  expected_windows_by_label:
+    0: 769
+    1: 95
+
+expected_source_counts:
+  benign_flows: 7372557
+  attack_flows: 576191
+  unique_source_ips: 31291
+  unique_destination_ips: 27076
+  unique_source_ports: 64898
+  unique_destination_ports: 59545
+
+evaluation:
+  partition_name: test
+  mqttset_training_folds: [1, 2, 3, 4]
+  confirmatory_seeds: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+  fit_normalization_on_external_data: false
+  threshold: 0.5
+  primary_aggregation: training_seed_macro_mean_across_folds
+  report_pooled_metrics: true
+  report_scenario_metrics: true
+
+limitations:
+  full_release_evaluation: false
+  represented_attack_scenario_count: 1
+  topology_results_generalize_to_entire_release: false
+  mixed_windows_contain_benign_background: true

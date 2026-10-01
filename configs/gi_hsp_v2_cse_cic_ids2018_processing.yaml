@@ -1,0 +1,90 @@
+schema_version: 1
+processing_id: gi_hsp_v2_cse_cic_ids2018_identity_subset_5s
+status: frozen_before_sequence_index
+dataset: cse_cic_ids2018_identity_subset
+display_name: CSE-CIC-IDS2018 identity-retaining 20 February subset
+evaluation_role: protocol_bound_external_extension
+
+source_protocol: configs/gi_hsp_v2_cse_cic_ids2018_identity_subset.yaml
+source_protocol_sha256: fb3055729be3e2f941a1d0a51f4eb7d8fbbea5dc08c61e10ba5640a697c89786
+
+canonical_store: datasets/processed/gi_hsp_v2/cse_cic_ids2018_identity_subset.sqlite
+canonical_store_summary: datasets/processed/gi_hsp_v2/cse_cic_ids2018_identity_subset.sqlite.summary.json
+canonical_store_sha256: 767989ea76964ab1329afaf216fc7870e381cdff907e6ed8cd5b251756014e24
+canonical_row_count: 7948748
+capture_count: 1
+
+temporal_cardinality_audit: results/gi_hsp_v2/cse_cic_ids2018/canonical_temporal_cardinality_audit.json
+temporal_cardinality_audit_sha256: 83ad9132623d3b1caf28a3c66515663784bdec6f9e74ba7fb4ab9d79f19c7bde
+
+sequence_index: datasets/processed/gi_hsp_v2/cse_cic_ids2018_identity_subset_sequence_index_5s.sqlite
+
+temporal_representation:
+  bin_seconds: 5
+  sequence_length: 10
+  window_length_seconds: 50
+  evaluation_stride_seconds: 50
+  alignment: absolute_unix_epoch
+  canonical_order:
+    - timestamp
+    - record_id
+  require_observed_flow_per_window: true
+  window_label_policy: any_attack_flow
+  expected_window_count: 864
+  expected_windows_by_label:
+    0: 769
+    1: 95
+  expected_mixed_positive_windows: 95
+  expected_attack_only_windows: 0
+
+graph_cardinality:
+  maximum_nodes_per_window: 2024
+  median_nodes_per_window: 1484
+  p95_nodes_per_window: 1766
+  maximum_flows_per_window: 26858
+  theoretical_maximum_dense_edge_tensor_bytes_per_sample: 491589120
+  dense_identity_batching_permitted: false
+
+representation_policy:
+  fused_identity:
+    topology_representation: sparse
+    batch_size: 1
+    num_workers: 0
+  topology_only:
+    topology_representation: sparse
+    batch_size: 1
+    num_workers: 0
+  fused_role_control:
+    topology_representation: dense
+    batch_size: 64
+    num_workers: 0
+  flow_transformer:
+    topology_representation: flow_only
+    batch_size: 64
+    num_workers: 0
+  flow_mlp_matched:
+    topology_representation: flow_only
+    batch_size: 64
+    num_workers: 0
+  flow_gru_matched:
+    topology_representation: flow_only
+    batch_size: 64
+    num_workers: 0
+
+evaluation:
+  partition_name: test
+  mqttset_training_folds: [1, 2, 3, 4]
+  confirmatory_seeds: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+  threshold: 0.5
+  fit_normalization_on_external_data: false
+  primary_aggregation: training_seed_macro_mean_across_folds
+  report_pooled_metrics: true
+  report_confusion_matrix: true
+  report_scenario_recall: true
+
+scope_limitations:
+  full_cse_cic_ids2018_release: false
+  represented_release_files: 1
+  represented_attack_scenarios: 1
+  positive_windows_contain_benign_background: true
+  claim_cross_scenario_generalization: false

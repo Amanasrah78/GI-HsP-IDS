@@ -1,0 +1,39 @@
+schema_version: 1
+protocol_id: gi_hsp_v2_xiiotid_external_stress_test
+
+dataset: x-iiotid
+canonical_store: datasets/processed/gi_hsp_v2/xiiotid_mqtt_corrected.sqlite
+
+evaluation_role: external_cross_dataset_mqtt_stress_test
+partition_name: test
+mqttset_training_folds:
+  - 1
+  - 2
+  - 3
+  - 4
+
+temporal_representation:
+  bin_seconds: 5
+  sequence_length: 10
+  window_length_seconds: 50
+  evaluation_stride_seconds: 50
+  preserve_empty_steps: true
+  require_observed_flow_per_window: true
+
+window_labels:
+  binary_rule: require_uniform_binary_label
+  source_label_rule: require_uniform_source_label
+
+normalization:
+  fit_on_xiiotid: false
+  source: corresponding_mqttset_training_fold
+
+evaluation:
+  preserve_natural_class_distribution: true
+  threshold: 0.5
+  report_per_source_label_recall: true
+
+limitations:
+  - severe attack-majority class imbalance
+  - date and source-label confounding
+  - no claim of host-space perturbation robustness
