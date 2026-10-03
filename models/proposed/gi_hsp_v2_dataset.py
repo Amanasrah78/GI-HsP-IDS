@@ -4,7 +4,11 @@ from pathlib import Path
 from torch.utils.data import Dataset
 
 from models.proposed.gi_hsp_v2_feature_contract import (
+    validate_graph_attribute_mode,
     validate_graph_view,
+)
+from models.proposed.gi_hsp_v2_graph_attribute_mode import (
+    apply_graph_attribute_mode_to_tensors,
 )
 from models.proposed.gi_hsp_v2_tensor_conversion import (
     temporal_sequence_to_tensors,
@@ -32,6 +36,7 @@ class GIHSPV2SequenceDataset(Dataset):
         partition_name,
         graph_view,
         normalizer=None,
+        graph_attribute_mode="full",
     ):
         if partition_name not in PARTITIONS:
             raise ValueError(
@@ -51,6 +56,11 @@ class GIHSPV2SequenceDataset(Dataset):
             graph_view
         )
         self.normalizer = normalizer
+        self.graph_attribute_mode = (
+            validate_graph_attribute_mode(
+                graph_attribute_mode
+            )
+        )
 
         if self.fold <= 0:
             raise ValueError("fold must be positive")
@@ -159,14 +169,25 @@ class GIHSPV2SequenceDataset(Dataset):
             window_id=window_id,
             graph_view=self.graph_view,
             bin_seconds=self.bin_seconds,
+            graph_attribute_mode=(
+                self.graph_attribute_mode
+            ),
         )
 
-        tensors = temporal_sequence_to_tensors(sequence)
+        tensors = temporal_sequence_to_tensors(
+            sequence,
+            graph_attribute_mode=(
+                self.graph_attribute_mode
+            ),
+        )
 
         if self.normalizer is not None:
             tensors = self.normalizer.transform(tensors)
 
-        return tensors
+        return apply_graph_attribute_mode_to_tensors(
+            tensors,
+            self.graph_attribute_mode,
+        )
 
     def close(self):
         if self._flow_connection is not None:

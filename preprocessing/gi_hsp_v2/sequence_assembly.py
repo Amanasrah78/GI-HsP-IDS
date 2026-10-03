@@ -6,6 +6,9 @@ from models.proposed.gi_hsp_v2_feature_contract import (
     NODE_FEATURE_NAMES,
     validate_graph_view,
 )
+from models.proposed.gi_hsp_v2_graph_attribute_mode import (
+    apply_graph_attribute_mode_to_sequence,
+)
 from preprocessing.gi_hsp_v2.flow_step_features import (
     flow_feature_vector,
 )
@@ -237,6 +240,7 @@ def assemble_temporal_sequence(
     window,
     graph_view,
     bin_seconds=1,
+    graph_attribute_mode="full",
 ):
     graph_view = validate_graph_view(graph_view)
     start, end, binary_label = _validate_window(window)
@@ -326,7 +330,7 @@ def assemble_temporal_sequence(
     ):
         raise RuntimeError("Flow feature width violates contract")
 
-    return {
+    sequence = {
         "window_id": window.get("window_id"),
         "capture_id": window["capture_id"],
         "source_label": window["source_label"],
@@ -342,3 +346,8 @@ def assemble_temporal_sequence(
         "node_features": node_steps,
         "edges": edge_steps,
     }
+
+    return apply_graph_attribute_mode_to_sequence(
+        sequence,
+        graph_attribute_mode,
+    )
