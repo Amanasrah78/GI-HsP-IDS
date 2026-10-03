@@ -6,6 +6,7 @@ from models.proposed.gi_hsp_v2_model_factory import (
     ARCHITECTURES,
 )
 from models.proposed.gi_hsp_v2_feature_contract import (
+    validate_graph_attribute_mode,
     validate_graph_view,
 )
 
@@ -79,17 +80,71 @@ def load_training_config(path):
         "flow_mlp_baseline": "identity",
         "flow_gru_baseline": "identity",
         "comparison_e_graphsage": "identity",
+        "structure_only_graph_ablation": "identity",
+        "flow_structure_only_graph_ablation": "identity",
+    }
+    expected_attribute_modes = {
+        role: "full"
+        for role in allowed_roles
+    }
+    expected_attribute_modes.update({
+        "structure_only_graph_ablation": (
+            "structure_only"
+        ),
+        "flow_structure_only_graph_ablation": (
+            "structure_only"
+        ),
+    })
+    expected_ablation_architectures = {
+        "structure_only_graph_ablation": (
+            "topology_only"
+        ),
+        "flow_structure_only_graph_ablation": (
+            "gi_hsp"
+        ),
     }
 
     if experiment_role not in allowed_roles:
         raise ValueError("Unsupported experiment role")
 
     data["graph_view"] = validate_graph_view(data["graph_view"])
+    data["graph_attribute_mode"] = (
+        validate_graph_attribute_mode(
+            data.get("graph_attribute_mode", "full")
+        )
+    )
     expected_graph = allowed_roles[experiment_role]
+    expected_attribute_mode = expected_attribute_modes[
+        experiment_role
+    ]
 
     if data["graph_view"] != expected_graph:
         raise ValueError(
             f"{experiment_role} requires {expected_graph} graph view"
+        )
+
+    if (
+        data["graph_attribute_mode"]
+        != expected_attribute_mode
+    ):
+        raise ValueError(
+            f"{experiment_role} requires "
+            f"{expected_attribute_mode} graph attributes"
+        )
+
+    expected_architecture = (
+        expected_ablation_architectures.get(
+            experiment_role
+        )
+    )
+
+    if (
+        expected_architecture is not None
+        and architecture != expected_architecture
+    ):
+        raise ValueError(
+            f"{experiment_role} requires "
+            f"{expected_architecture} architecture"
         )
 
     data["batch_size"] = positive_integer(

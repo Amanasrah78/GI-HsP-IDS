@@ -7,6 +7,11 @@ from models.proposed.gi_hsp_v2_feature_contract import (
     EDGE_FEATURE_NAMES,
     FLOW_FEATURE_NAMES,
     NODE_FEATURE_NAMES,
+    validate_graph_attribute_mode,
+)
+from models.proposed.gi_hsp_v2_graph_attribute_mode import (
+    apply_graph_attribute_mode_to_sequence,
+    apply_graph_attribute_mode_to_tensors,
 )
 from preprocessing.gi_hsp_v2.sequence_loader import (
     load_assembled_window,
@@ -16,7 +21,21 @@ from preprocessing.gi_hsp_v2.sequence_loader import (
 def sparse_sequence_to_tensors(
     sequence,
     normalizer=None,
+    graph_attribute_mode=None,
 ):
+    recorded_mode = sequence.get(
+        "graph_attribute_mode",
+        "full",
+    )
+    mode = validate_graph_attribute_mode(
+        recorded_mode
+        if graph_attribute_mode is None
+        else graph_attribute_mode
+    )
+    sequence = apply_graph_attribute_mode_to_sequence(
+        sequence,
+        mode,
+    )
     sequence_length = int(sequence["sequence_length"])
     node_count = len(sequence["node_ids"])
 
@@ -167,6 +186,7 @@ def sparse_sequence_to_tensors(
         "capture_id": sequence["capture_id"],
         "source_label": sequence["source_label"],
         "graph_view": sequence["graph_view"],
+        "graph_attribute_mode": mode,
         "node_ids": list(sequence["node_ids"]),
         "tensor_representation": "sparse",
     }
@@ -174,7 +194,10 @@ def sparse_sequence_to_tensors(
     if normalizer is not None:
         tensors = normalizer.transform(tensors)
 
-    return tensors
+    return apply_graph_attribute_mode_to_tensors(
+        tensors,
+        mode,
+    )
 
 
 def collate_gi_hsp_v2_sparse(items):
@@ -210,6 +233,10 @@ def collate_gi_hsp_v2_sparse(items):
         "node_mask": item["node_mask"].unsqueeze(0),
         "targets": item["target"].unsqueeze(0),
         "graph_view": item["graph_view"],
+        "graph_attribute_mode": item.get(
+            "graph_attribute_mode",
+            "full",
+        ),
         "window_ids": [item["window_id"]],
         "capture_ids": [item["capture_id"]],
         "source_labels": [item["source_label"]],
@@ -238,11 +265,17 @@ class GIHSPV2SparseSequenceDataset(
             window_id=window_id,
             graph_view=self.graph_view,
             bin_seconds=self.bin_seconds,
+            graph_attribute_mode=(
+                self.graph_attribute_mode
+            ),
         )
 
         return sparse_sequence_to_tensors(
             sequence,
             normalizer=self.normalizer,
+            graph_attribute_mode=(
+                self.graph_attribute_mode
+            ),
         )
 
 

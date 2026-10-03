@@ -1,0 +1,63 @@
+schema_version: 1
+protocol_id: gi_hsp_v2_structure_ablation_seeds_5_14
+design_status: targeted_secondary_ablation
+objective: isolate_relational_structure_from_graph_traffic_attributes
+confirmatory_family_modified: false
+
+seeds: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+folds: [1, 2, 3, 4]
+
+training_conditions:
+  structure_only_graph:
+    config: configs/gi_hsp_v2_training_structure_only_graph.yaml
+    architecture: topology_only
+    graph_view: identity
+    graph_attribute_mode: structure_only
+  flow_structure_only_graph:
+    config: configs/gi_hsp_v2_training_flow_structure_only_graph.yaml
+    architecture: gi_hsp
+    graph_view: identity
+    graph_attribute_mode: structure_only
+
+reference_conditions:
+  flow_transformer:
+    source_protocol: gi_hsp_v2_confirmatory_replication_seeds_5_14
+    condition: flow_transformer
+  full_attributed_fusion:
+    source_protocol: gi_hsp_v2_confirmatory_replication_seeds_5_14
+    condition: fused_identity
+  full_attributed_graph:
+    source_protocol: gi_hsp_v2_confirmatory_replication_seeds_5_14
+    condition: topology_only
+
+evaluation_protocols: [mqttset, xiiotid, generated_hsp]
+primary_metrics: [balanced_accuracy, mcc]
+
+planned_contrasts:
+  - id: flow_structure_only_vs_flow_transformer
+    left: flow_structure_only_graph
+    right: flow_transformer
+  - id: full_attributed_fusion_vs_flow_structure_only
+    left: full_attributed_fusion
+    right: flow_structure_only_graph
+  - id: full_attributed_graph_vs_structure_only_graph
+    left: full_attributed_graph
+    right: structure_only_graph
+
+inference:
+  independent_unit: training_seed
+  fold_aggregation: macro_mean_within_seed
+  test: exact_two_sided_paired_sign_flip
+  confidence_interval: student_t_95_percent
+  multiplicity_correction: holm_within_protocol_and_metric
+  family_size: 3
+  alpha: 0.05
+
+frozen_training_contract:
+  optimizer: true
+  sampler: true
+  threshold: true
+  folds: true
+  training_protocol: true
+  evaluation_logic: true
+  model_dimensions: true

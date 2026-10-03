@@ -77,6 +77,9 @@ def make_dataset(config, fold, partition, normalizer):
         partition_name=partition,
         graph_view=data["graph_view"],
         normalizer=normalizer,
+        graph_attribute_mode=data[
+            "graph_attribute_mode"
+        ],
     )
 
 
@@ -156,6 +159,9 @@ def run_experiment(
 
     data = config["data"]
     graph_view = data["graph_view"]
+    graph_attribute_mode = data[
+        "graph_attribute_mode"
+    ]
     artifact_path = Path(
         data["normalization_artifact_template"].format(
             fold=fold
@@ -382,6 +388,9 @@ def run_experiment(
             "seed": seed,
             "device": str(device),
             "graph_view": graph_view,
+            "graph_attribute_mode": (
+                graph_attribute_mode
+            ),
             "architecture": config["model"]["architecture"],
             "bin_seconds": bin_seconds,
             "epochs_requested": epochs,

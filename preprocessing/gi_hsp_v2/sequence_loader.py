@@ -117,6 +117,7 @@ def load_assembled_window(
     window_id,
     graph_view,
     bin_seconds=1,
+    graph_attribute_mode="full",
 ):
     window = get_window(
         index_connection,
@@ -132,6 +133,7 @@ def load_assembled_window(
         window,
         graph_view,
         bin_seconds=bin_seconds,
+        graph_attribute_mode=graph_attribute_mode,
     )
     sequence["dataset"] = str(dataset)
     sequence["stride_seconds"] = int(
