@@ -450,6 +450,27 @@ def evaluate_experiment(
     fold = int(summary["fold"])
     seed = int(summary["seed"])
     graph_view = str(summary["graph_view"])
+    configured_graph_attribute_mode = str(
+        config.get("data", {}).get(
+            "graph_attribute_mode",
+            "full",
+        )
+    )
+    graph_attribute_mode = str(
+        summary.get(
+            "graph_attribute_mode",
+            configured_graph_attribute_mode,
+        )
+    )
+
+    if (
+        graph_attribute_mode
+        != configured_graph_attribute_mode
+    ):
+        raise ValueError(
+            "Summary and configuration graph attribute "
+            "modes do not match"
+        )
     architecture = config["model"].get(
         "architecture",
         "gi_hsp",
@@ -509,6 +530,9 @@ def evaluate_experiment(
         ],
         graph_view=graph_view,
         normalizer=normalizer,
+        graph_attribute_mode=(
+            graph_attribute_mode
+        ),
     )
 
     try:
@@ -613,6 +637,9 @@ def evaluate_experiment(
         "architecture": architecture,
         "tensor_representation": tensor_representation,
         "graph_view": graph_view,
+        "graph_attribute_mode": (
+            graph_attribute_mode
+        ),
         "fold": fold,
         "seed": seed,
         "checkpoint_epoch": int(
@@ -686,6 +713,9 @@ def evaluate_experiment(
         "architecture": architecture,
         "tensor_representation": tensor_representation,
         "graph_view": graph_view,
+        "graph_attribute_mode": (
+            graph_attribute_mode
+        ),
         "fold": fold,
         "seed": seed,
         "window_count": window_count,

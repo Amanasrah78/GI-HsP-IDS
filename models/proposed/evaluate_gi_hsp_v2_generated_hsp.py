@@ -134,6 +134,27 @@ def evaluate_experiment(
     fold = int(summary["fold"])
     seed = int(summary["seed"])
     graph_view = str(summary["graph_view"])
+    configured_graph_attribute_mode = str(
+        config.get("data", {}).get(
+            "graph_attribute_mode",
+            "full",
+        )
+    )
+    graph_attribute_mode = str(
+        summary.get(
+            "graph_attribute_mode",
+            configured_graph_attribute_mode,
+        )
+    )
+
+    if (
+        graph_attribute_mode
+        != configured_graph_attribute_mode
+    ):
+        raise ValueError(
+            "Summary and configuration graph attribute "
+            "modes do not match"
+        )
     architecture = config["model"].get(
         "architecture",
         "gi_hsp",
@@ -173,6 +194,9 @@ def evaluate_experiment(
         partition_name=protocol["evaluation"]["partition_name"],
         graph_view=graph_view,
         normalizer=normalizer,
+        graph_attribute_mode=(
+            graph_attribute_mode
+        ),
     )
 
     try:
@@ -222,6 +246,9 @@ def evaluate_experiment(
         "source_experiment": str(experiment_directory),
         "architecture": architecture,
         "graph_view": graph_view,
+        "graph_attribute_mode": (
+            graph_attribute_mode
+        ),
         "fold": fold,
         "seed": seed,
         "checkpoint_epoch": int(checkpoint["epoch"]),
@@ -246,6 +273,9 @@ def evaluate_experiment(
         "output_path": str(output_path),
         "architecture": architecture,
         "graph_view": graph_view,
+        "graph_attribute_mode": (
+            graph_attribute_mode
+        ),
         "fold": fold,
         "seed": seed,
         "window_count": len(dataset),

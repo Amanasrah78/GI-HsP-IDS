@@ -4,6 +4,11 @@ from models.proposed.gi_hsp_v2_feature_contract import (
     EDGE_FEATURE_NAMES,
     FLOW_FEATURE_NAMES,
     NODE_FEATURE_NAMES,
+    validate_graph_attribute_mode,
+)
+from models.proposed.gi_hsp_v2_graph_attribute_mode import (
+    apply_graph_attribute_mode_to_sequence,
+    apply_graph_attribute_mode_to_tensors,
 )
 
 
@@ -72,7 +77,37 @@ def _validate_sequence_dimensions(sequence):
 def temporal_sequence_to_tensors(
     sequence,
     device=None,
+    graph_attribute_mode=None,
 ):
+    recorded_mode = sequence.get(
+        "graph_attribute_mode",
+        "full",
+    )
+    requested_mode = (
+        recorded_mode
+        if graph_attribute_mode is None
+        else graph_attribute_mode
+    )
+    mode = validate_graph_attribute_mode(
+        requested_mode
+    )
+
+    if (
+        graph_attribute_mode is not None
+        and "graph_attribute_mode" in sequence
+        and validate_graph_attribute_mode(
+            recorded_mode
+        ) != mode
+    ):
+        raise ValueError(
+            "Requested graph attribute mode differs "
+            "from sequence metadata"
+        )
+
+    sequence = apply_graph_attribute_mode_to_sequence(
+        sequence,
+        mode,
+    )
     sequence_length, node_count = (
         _validate_sequence_dimensions(sequence)
     )
@@ -142,7 +177,7 @@ def temporal_sequence_to_tensors(
                 destination,
             ] = True
 
-    return {
+    tensors = {
         "flow_features": flow_features,
         "node_features": node_features,
         "edge_features": edge_features,
@@ -161,5 +196,11 @@ def temporal_sequence_to_tensors(
         "capture_id": sequence["capture_id"],
         "source_label": sequence["source_label"],
         "graph_view": sequence["graph_view"],
+        "graph_attribute_mode": mode,
         "node_ids": list(sequence["node_ids"]),
     }
+
+    return apply_graph_attribute_mode_to_tensors(
+        tensors,
+        mode,
+    )

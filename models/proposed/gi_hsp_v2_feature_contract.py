@@ -31,6 +31,18 @@ NODE_FEATURE_NAMES = (
     "out_payload_bytes",
 )
 
+STRUCTURAL_NODE_FEATURE_NAMES = (
+    "active",
+    "in_neighbor_count",
+    "out_neighbor_count",
+)
+
+TRAFFIC_INTENSITY_NODE_FEATURE_NAMES = tuple(
+    name
+    for name in NODE_FEATURE_NAMES
+    if name not in STRUCTURAL_NODE_FEATURE_NAMES
+)
+
 EDGE_FEATURE_NAMES = (
     "flow_count",
     "packet_count",
@@ -40,6 +52,11 @@ EDGE_FEATURE_NAMES = (
 GRAPH_VIEWS = {
     "identity",
     "client_broker_role_collapsed",
+}
+
+GRAPH_ATTRIBUTE_MODES = {
+    "full",
+    "structure_only",
 }
 
 
@@ -52,6 +69,16 @@ def validate_graph_view(graph_view):
     return graph_view
 
 
+def validate_graph_attribute_mode(graph_attribute_mode):
+    if graph_attribute_mode not in GRAPH_ATTRIBUTE_MODES:
+        raise ValueError(
+            "Unsupported graph attribute mode: "
+            f"{graph_attribute_mode!r}"
+        )
+
+    return graph_attribute_mode
+
+
 def feature_contract():
     return {
         "schema_version": FEATURE_SCHEMA_VERSION,
@@ -59,6 +86,22 @@ def feature_contract():
         "node_features": list(NODE_FEATURE_NAMES),
         "edge_features": list(EDGE_FEATURE_NAMES),
         "graph_views": sorted(GRAPH_VIEWS),
+        "graph_attribute_modes": sorted(
+            GRAPH_ATTRIBUTE_MODES
+        ),
+        "structure_only_policy": {
+            "retained_node_features": list(
+                STRUCTURAL_NODE_FEATURE_NAMES
+            ),
+            "zeroed_node_features": list(
+                TRAFFIC_INTENSITY_NODE_FEATURE_NAMES
+            ),
+            "zeroed_edge_features": list(
+                EDGE_FEATURE_NAMES
+            ),
+            "preserve_directed_edge_mask": True,
+            "preserve_tensor_dimensions": True,
+        },
         "missing_value_policy": {
             "aggregate_sums": (
                 "sum available measurements and retain missing fractions"
