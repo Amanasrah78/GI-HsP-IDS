@@ -1,0 +1,41 @@
+schema_version: 1
+protocol_id: gi_hsp_v2_horizon_ablation_seeds_5_14
+experiment_role: horizon_ablation
+seed: 0
+data:
+  dataset: mqttset
+  flow_store: datasets/processed/gi_hsp_v2/mqttset_canonical.sqlite
+  sequence_index: datasets/processed/gi_hsp_v2/horizon_ablation/mqttset_horizon_h06_5s.sqlite
+  normalization_artifact_template: results/gi_hsp_v2/normalization/mqttset-fold-{fold}-identity-5s.json
+  graph_view: identity
+  batch_size: 64
+  num_workers: 0
+  graph_attribute_mode: full
+model:
+  architecture: topology_only
+  flow_dim: 64
+  topology_dim: 64
+  fusion_dim: 64
+  num_classes: 2
+  sequence_length: 6
+  flow_num_heads: 4
+  flow_num_layers: 2
+  dropout: 0.1
+optimizer:
+  name: adam
+  learning_rate: 0.0001
+  weight_decay: 0.0
+training:
+  epochs: 25
+  gradient_clip_norm: 1.0
+  early_stopping_patience: 5
+  selection_metric: auprc
+  selection_tie_breaker: loss
+  balanced_batch_ratio: 1.0
+  rotate_benign_sample_across_epochs: true
+evaluation:
+  threshold: 0.5
+  preserve_natural_class_distribution: true
+  report_per_attack_scenario_recall: true
+output:
+  directory: results/gi_hsp_v2/horizon_ablation/experiments
