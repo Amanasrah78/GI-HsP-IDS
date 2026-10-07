@@ -29,6 +29,10 @@ from models.proposed.gi_hsp_v2_training import (
 from models.proposed.gi_hsp_v2_training_config import (
     load_training_config,
 )
+from preprocessing.gi_hsp_v2.sequence_index import (
+    get_metadata,
+    open_sequence_index,
+)
 
 
 def set_seed(seed):
@@ -64,6 +68,157 @@ def resolve_device(requested):
         raise RuntimeError("CUDA was requested but is unavailable")
 
     return device
+
+
+
+HORIZON_PROTOCOL_ID = (
+    "gi_hsp_v2_horizon_ablation_seeds_5_14"
+)
+
+HORIZON_RETAINED_WINDOW_COUNT = 133632
+
+HORIZON_RETAINED_COHORT_SHA256 = (
+    "38a3de5a111a567360e059e0a1dfbad64"
+    "a21a619bc001541343af03264986011"
+)
+
+
+def validate_sequence_index_contract(config):
+    data = config["data"]
+    model = config["model"]
+
+    index_path = Path(data["sequence_index"])
+
+    if not index_path.is_file():
+        raise FileNotFoundError(
+            f"Sequence index not found: {index_path}"
+        )
+
+    connection = open_sequence_index(index_path)
+
+    try:
+        try:
+            contract = get_metadata(
+                connection,
+                "build_contract",
+            )
+        except KeyError as exc:
+            raise ValueError(
+                "Sequence index is missing build_contract metadata"
+            ) from exc
+
+        horizon_metadata = None
+
+        if config.get("experiment_role") == "horizon_ablation":
+            try:
+                horizon_metadata = get_metadata(
+                    connection,
+                    "horizon_ablation",
+                )
+            except KeyError as exc:
+                raise ValueError(
+                    "horizon_ablation requires a derived "
+                    "horizon sequence index"
+                ) from exc
+
+    finally:
+        connection.close()
+
+    try:
+        index_sequence_length = int(
+            contract["sequence_length"]
+        )
+        bin_seconds = int(
+            contract["bin_seconds"]
+        )
+        window_length_seconds = int(
+            contract["window_length_seconds"]
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError(
+            "Sequence-index build contract is incomplete"
+        ) from exc
+
+    model_sequence_length = int(
+        model["sequence_length"]
+    )
+
+    if index_sequence_length != model_sequence_length:
+        raise ValueError(
+            "Model sequence_length does not match "
+            "sequence-index build contract"
+        )
+
+    if (
+        window_length_seconds
+        != index_sequence_length * bin_seconds
+    ):
+        raise ValueError(
+            "Sequence-index window length does not match "
+            "sequence_length * bin_seconds"
+        )
+
+    if config.get("experiment_role") == "horizon_ablation":
+        try:
+            horizon_sequence_length = int(
+                horizon_metadata["sequence_length"]
+            )
+            observation_seconds = int(
+                horizon_metadata["observation_seconds"]
+            )
+            protocol_id = str(
+                horizon_metadata["protocol_id"]
+            )
+            common_support_prefix = int(
+                contract["common_support_prefix_seconds"]
+            )
+            retained_count = int(
+                contract["retained_source_window_count"]
+            )
+            cohort_sha = str(
+                contract[
+                    "retained_source_window_ids_sha256"
+                ]
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError(
+                "Horizon sequence index is missing frozen "
+                "common-support metadata"
+            ) from exc
+
+        if protocol_id != HORIZON_PROTOCOL_ID:
+            raise ValueError(
+                "Unexpected horizon-ablation protocol ID"
+            )
+
+        if horizon_sequence_length != model_sequence_length:
+            raise ValueError(
+                "Horizon metadata sequence_length does not "
+                "match model sequence_length"
+            )
+
+        if observation_seconds != window_length_seconds:
+            raise ValueError(
+                "Horizon observation duration does not match "
+                "sequence-index window length"
+            )
+
+        if common_support_prefix != 5:
+            raise ValueError(
+                "Horizon common-support prefix must be 5 seconds"
+            )
+
+        if retained_count != HORIZON_RETAINED_WINDOW_COUNT:
+            raise ValueError(
+                "Unexpected horizon common-support population size"
+            )
+
+        if cohort_sha != HORIZON_RETAINED_COHORT_SHA256:
+            raise ValueError(
+                "Unexpected horizon common-support cohort SHA256"
+            )
+
+    return contract
 
 
 def make_dataset(config, fold, partition, normalizer):
@@ -158,6 +313,9 @@ def run_experiment(
         raise ValueError("epochs must be positive")
 
     data = config["data"]
+
+    validate_sequence_index_contract(config)
+
     graph_view = data["graph_view"]
     graph_attribute_mode = data[
         "graph_attribute_mode"
