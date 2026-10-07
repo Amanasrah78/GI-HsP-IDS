@@ -24,6 +24,20 @@ def model():
     )
 
 
+def concatenation_model():
+    return GIHSPV2Model(
+        flow_dim=16,
+        topology_dim=16,
+        fusion_dim=16,
+        num_classes=2,
+        sequence_length=10,
+        flow_num_heads=4,
+        flow_num_layers=1,
+        dropout=0.0,
+        fusion_method="concatenation",
+    )
+
+
 def inputs(batch_size=2):
     flow = torch.zeros(
         batch_size,
@@ -88,6 +102,26 @@ def test_output_shapes_and_gate_bounds():
     assert output["fusion_gate"].shape == (2, 16)
     assert torch.all(output["fusion_gate"] >= 0)
     assert torch.all(output["fusion_gate"] <= 1)
+
+
+def test_concatenation_output_shapes_and_has_no_gate():
+    output = concatenation_model()(**inputs())
+
+    assert output["logits"].shape == (2, 2)
+    assert output["fused_embedding"].shape == (2, 16)
+    assert output["fusion_gate"] is None
+
+
+def test_fusion_heads_have_equal_parameter_counts():
+    gated = model()
+    concatenated = concatenation_model()
+
+    gated_count = sum(p.numel() for p in gated.fusion.parameters())
+    concat_count = sum(
+        p.numel() for p in concatenated.fusion.parameters()
+    )
+
+    assert concat_count == gated_count
 
 
 def test_both_views_affect_their_embeddings():

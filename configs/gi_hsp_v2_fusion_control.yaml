@@ -1,0 +1,60 @@
+schema_version: 1
+protocol_id: gi_hsp_v2_fusion_control_seeds_5_14
+design_status: targeted_secondary_analysis
+objective: compare_learned_gating_with_simple_fusion_controls
+confirmatory_family_modified: false
+
+seeds: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+folds: [1, 2, 3, 4]
+
+training_condition:
+  id: concatenation
+  config: configs/gi_hsp_v2_training_fusion_concat.yaml
+  architecture: gi_hsp_concat
+  graph_view: identity
+  graph_attribute_mode: full
+
+reference_conditions:
+  learned_gate: fused_identity
+  flow_branch: flow_transformer
+  graph_branch: topology_only
+
+score_averaging:
+  inputs: [flow_branch, graph_branch]
+  operation: arithmetic_mean_attack_probability
+
+evaluation_protocols: [mqttset, xiiotid, generated_hsp_expanded]
+primary_metrics: [balanced_accuracy, mcc]
+
+planned_contrasts:
+  - id: learned_gate_vs_score_average
+    left: learned_gate
+    right: score_average
+  - id: learned_gate_vs_concatenation
+    left: learned_gate
+    right: concatenation
+
+error_overlap:
+  branches: [flow_branch, graph_branch]
+  threshold: 0.5
+  summaries: [prediction_disagreement, both_wrong, flow_only_wrong, graph_only_wrong, error_set_jaccard]
+  status: descriptive
+
+inference:
+  independent_unit: training_seed
+  fold_aggregation: macro_mean_within_seed
+  test: exact_two_sided_paired_sign_flip
+  confidence_interval: student_t_95_percent
+  multiplicity_correction: holm_within_protocol_and_metric
+  family_size: 2
+  alpha: 0.05
+
+frozen_training_contract:
+  optimizer: true
+  sampler: true
+  threshold: true
+  folds: true
+  training_protocol: true
+  evaluation_logic: true
+  model_dimensions: true
+  fusion_head_parameter_count: true

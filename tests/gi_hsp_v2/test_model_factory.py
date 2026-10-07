@@ -28,6 +28,7 @@ def config(architecture):
     ("architecture", "expected_type"),
     [
         ("gi_hsp", GIHSPV2Model),
+        ("gi_hsp_concat", GIHSPV2Model),
         ("flow_only", GIHSPV2FlowOnlyModel),
         ("topology_only", GIHSPV2TopologyOnlyModel),
     ],
@@ -45,3 +46,9 @@ def test_supported_architecture_is_built(
 def test_unsupported_architecture_is_rejected():
     with pytest.raises(ValueError, match="Unsupported"):
         build_model(config("invalid"))
+
+
+def test_concatenation_architecture_selects_concatenation_fusion():
+    network = build_model(config("gi_hsp_concat"))
+
+    assert network.fusion_method == "concatenation"

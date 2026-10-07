@@ -82,6 +82,7 @@ def load_training_config(path):
         "comparison_e_graphsage": "identity",
         "structure_only_graph_ablation": "identity",
         "flow_structure_only_graph_ablation": "identity",
+        "fusion_concat_control": "identity",
     }
     expected_attribute_modes = {
         role: "full"
@@ -102,6 +103,7 @@ def load_training_config(path):
         "flow_structure_only_graph_ablation": (
             "gi_hsp"
         ),
+        "fusion_concat_control": "gi_hsp_concat",
     }
 
     if experiment_role not in allowed_roles:

@@ -14,6 +14,7 @@ from models.proposed.gi_hsp_v2_reference_models import (
 
 ARCHITECTURES = {
     "gi_hsp",
+    "gi_hsp_concat",
     "flow_only",
     "topology_only",
     "flow_mlp",
@@ -28,6 +29,12 @@ def build_model(model_config):
 
     if architecture == "gi_hsp":
         return GIHSPV2Model(**config)
+
+    if architecture == "gi_hsp_concat":
+        return GIHSPV2Model(
+            **config,
+            fusion_method="concatenation",
+        )
 
     if architecture == "flow_only":
         return GIHSPV2FlowOnlyModel(

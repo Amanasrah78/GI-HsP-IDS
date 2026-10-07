@@ -1,6 +1,7 @@
 from torch import nn
 
 from models.proposed.gated_fusion import (
+    ConcatenationCrossViewFusion,
     GatedCrossViewFusion,
 )
 from models.proposed.gi_hsp_v2_flow_encoder import (
@@ -22,6 +23,7 @@ class GIHSPV2Model(nn.Module):
         flow_num_heads=4,
         flow_num_layers=2,
         dropout=0.1,
+        fusion_method="gated",
     ):
         super().__init__()
 
@@ -42,7 +44,15 @@ class GIHSPV2Model(nn.Module):
             sequence_length=sequence_length,
             dropout=dropout,
         )
-        self.fusion = GatedCrossViewFusion(
+        if fusion_method not in {"gated", "concatenation"}:
+            raise ValueError("Unsupported fusion method")
+        self.fusion_method = fusion_method
+        fusion_class = (
+            GatedCrossViewFusion
+            if fusion_method == "gated"
+            else ConcatenationCrossViewFusion
+        )
+        self.fusion = fusion_class(
             flow_dim=flow_dim,
             topology_dim=topology_dim,
             fusion_dim=fusion_dim,
@@ -72,11 +82,18 @@ class GIHSPV2Model(nn.Module):
             edge_mask,
             node_mask,
         )
-        fused_embedding, fusion_gate = self.fusion(
-            flow_embedding,
-            topology_embedding,
-            return_gate=True,
-        )
+        if self.fusion_method == "gated":
+            fused_embedding, fusion_gate = self.fusion(
+                flow_embedding,
+                topology_embedding,
+                return_gate=True,
+            )
+        else:
+            fused_embedding = self.fusion(
+                flow_embedding,
+                topology_embedding,
+            )
+            fusion_gate = None
         logits = self.classifier(
             fused_embedding
         )
