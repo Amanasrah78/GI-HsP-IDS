@@ -23,11 +23,16 @@ EXTERNAL_PROTOCOLS = {
     },
     "generated_hsp": {
         "module": (
-            "models.proposed.evaluate_gi_hsp_v2_generated_hsp"
+            "models.proposed."
+            "evaluate_gi_hsp_v2_generated_hsp_expanded"
         ),
-        "result_name": "generated_hsp_pilot_metrics.json",
-        "expected_dataset": "generated_hsp",
-        "expected_window_count": 18,
+        "result_name": "generated_hsp_expanded_metrics.json",
+        "expected_dataset": "generated_hsp_expanded",
+        "expected_window_count": 60,
+        "processing_protocol_path": (
+            "configs/"
+            "gi_hsp_v2_generated_hsp_expanded_processing.yaml"
+        ),
     },
 }
 
@@ -119,12 +124,15 @@ def build_jobs(
                         "expected_window_count": specification[
                             "expected_window_count"
                         ],
+                        "processing_protocol_path": specification.get(
+                            "processing_protocol_path"
+                        ),
                     })
     return jobs
 
 
 def command(job, device):
-    return [
+    value = [
         sys.executable,
         "-m",
         job["module"],
@@ -133,6 +141,15 @@ def command(job, device):
         device,
     ]
 
+    if job["evaluation_protocol"] == "generated_hsp":
+        value.extend([
+            "--processing-protocol",
+            job["processing_protocol_path"],
+            "--output-name",
+            job["result_path"].name,
+        ])
+
+    return value
 
 def validate_design(job, protocol_hash):
     path = job["experiment_directory"] / "structure_ablation_design.json"

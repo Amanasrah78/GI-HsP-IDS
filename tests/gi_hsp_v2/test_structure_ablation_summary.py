@@ -4,6 +4,7 @@ import io
 import pytest
 
 from models.proposed.summarize_gi_hsp_v2_structure_ablation import (
+    RESULT_FILES,
     _csv_strings,
     experiment_directory,
     summarize_records,
@@ -144,3 +145,10 @@ def test_csv_and_atomic_outputs_are_stable(tmp_path):
     assert paths["contrasts_csv"].read_text() == contrasts
     with pytest.raises(FileExistsError, match="Refusing to overwrite"):
         write_outputs(tmp_path, summary)
+
+
+
+def test_generated_hsp_summary_uses_expanded_results():
+    assert RESULT_FILES["generated_hsp"] == (
+        "generated_hsp_expanded_metrics.json"
+    )

@@ -24,7 +24,7 @@ DEFAULT_OUTPUT_DIRECTORY = (
 RESULT_FILES = {
     "mqttset": "summary.json",
     "xiiotid": "xiiotid_test_metrics.json",
-    "generated_hsp": "generated_hsp_pilot_metrics.json",
+    "generated_hsp": "generated_hsp_expanded_metrics.json",
 }
 TARGET_PREFIX = "mqttset-structure-ablation"
 REFERENCE_PREFIX = "mqttset-confirmatory"
