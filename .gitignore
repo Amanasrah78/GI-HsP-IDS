@@ -63,3 +63,4 @@ results/
 models/checkpoints/
 hsp/docker/**/captures/
 **/*.before-*
+._*
