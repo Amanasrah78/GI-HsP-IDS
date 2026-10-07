@@ -9,9 +9,11 @@ from models.proposed.gi_hsp_v2_graphids_data import (
     collate_graphids_windows,
 )
 from models.proposed.gi_hsp_v2_graphids_training import (
+    graphids_checkpoint_decision,
+    graphids_early_stopping_patience,
     score_graphids_loader,
     train_graphids_epoch,
-    validation_auprc,
+    validation_average_precision,
 )
 
 
@@ -110,4 +112,82 @@ def test_scoring_retains_window_metadata():
         "positive",
     ]
     assert len(result["scores"]) == 2
-    assert validation_auprc(result) >= 0.0
+    assert validation_average_precision(result) >= 0.0
+
+
+
+def test_graphids_reads_declared_early_stopping_patience():
+    training = {
+        "early_stopping_patience": 7,
+        "patience": 99,
+    }
+
+    assert graphids_early_stopping_patience(training) == 7
+
+
+def test_graphids_legacy_patience_is_fallback_only():
+    training = {
+        "patience": 9,
+    }
+
+    assert graphids_early_stopping_patience(training) == 9
+
+
+def test_graphids_strict_ap_improvement_replaces_and_resets():
+    replace_checkpoint, reset_patience = (
+        graphids_checkpoint_decision(
+            epoch=5,
+            validation_score=0.91,
+            best_validation=0.90,
+            validation_loss=0.50,
+            best_validation_loss=0.40,
+        )
+    )
+
+    assert replace_checkpoint is True
+    assert reset_patience is True
+
+
+def test_graphids_equal_ap_lower_loss_replaces_without_reset():
+    replace_checkpoint, reset_patience = (
+        graphids_checkpoint_decision(
+            epoch=5,
+            validation_score=1.0,
+            best_validation=1.0,
+            validation_loss=0.30,
+            best_validation_loss=0.40,
+        )
+    )
+
+    assert replace_checkpoint is True
+    assert reset_patience is False
+
+
+def test_graphids_equal_ap_no_loss_improvement_does_not_replace():
+    replace_checkpoint, reset_patience = (
+        graphids_checkpoint_decision(
+            epoch=5,
+            validation_score=1.0,
+            best_validation=1.0,
+            validation_loss=0.40,
+            best_validation_loss=0.40,
+        )
+    )
+
+    assert replace_checkpoint is False
+    assert reset_patience is False
+
+
+def test_graphids_worse_ap_does_not_replace_or_reset():
+    replace_checkpoint, reset_patience = (
+        graphids_checkpoint_decision(
+            epoch=5,
+            validation_score=0.89,
+            best_validation=0.90,
+            validation_loss=0.20,
+            best_validation_loss=0.40,
+        )
+    )
+
+    assert replace_checkpoint is False
+    assert reset_patience is False

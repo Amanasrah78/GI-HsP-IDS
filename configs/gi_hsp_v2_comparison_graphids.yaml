@@ -111,7 +111,7 @@ training:
   loss: mean_squared_reconstruction_error_over_valid_entries
   target_gradient_policy: retain_gradient_through_target_embedding
   checkpoint_selection:
-    metric: validation_window_auprc
+    metric: validation_window_average_precision
     direction: maximize
     equal_score_policy: replace_checkpoint_but_do_not_reset_patience
   threshold_selection:
@@ -134,7 +134,7 @@ evaluation:
   window_ground_truth: frozen_any_attack_flow_label
   preserve_natural_test_distribution: true
   primary_metrics:
-  - auprc
+  - average_precision
   - balanced_accuracy
   - mcc
   secondary_metrics:
@@ -155,7 +155,7 @@ implementation_constraints:
   - source_destination_edge_readout
   - transformer_encoder_decoder_reconstruction
   - valid_entry_mse
-  - validation_window_auprc_checkpoint_selection
+  - validation_window_average_precision_checkpoint_selection
   - validation_window_macro_f1_threshold_selection
   deterministic_seeded_shuffling: true
 prohibited_deviations:
@@ -227,3 +227,12 @@ pre_training_batching_clarification:
   previous_protocol_sha256: 05f63c0b5d9de691fce31b054f4a8386bf0e9e824003bc5c6e67be22ade94e86
   result_informed: false
   reason: Specify implementation batch sizes before training.
+
+metric_terminology_correction:
+  discovered_during_first_timing_run: true
+  performance_informed: false
+  numerical_computation_changed: false
+  previous_label: auprc
+  corrected_label: average_precision
+  implementation: sklearn.metrics.average_precision_score
+  reason: The implementation computes non-interpolated average precision rather than trapezoidal integration of the precision-recall curve.

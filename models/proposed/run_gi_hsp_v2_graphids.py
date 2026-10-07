@@ -26,9 +26,11 @@ from models.proposed.gi_hsp_v2_graphids_data import (
     collate_graphids_windows,
 )
 from models.proposed.gi_hsp_v2_graphids_training import (
+    graphids_checkpoint_decision,
+    graphids_early_stopping_patience,
     score_graphids_loader,
     train_graphids_epoch,
-    validation_auprc,
+    validation_average_precision,
 )
 from models.proposed.gi_hsp_v2_normalization_artifact import (
     load_normalization_artifact,
@@ -284,7 +286,7 @@ def classification_metrics(targets, scores, threshold):
     return {
         "sample_count": len(targets),
         "threshold": threshold,
-        "auprc": float(
+        "average_precision": float(
             average_precision_score(targets, scores)
         ),
         "auroc": float(
@@ -449,8 +451,8 @@ def run_experiment(
             training.get("max_epochs", 100),
         )
     )
-    patience = int(
-        training.get("patience", 20)
+    patience = graphids_early_stopping_patience(
+        training
     )
     gradient_clip_norm = float(
         training.get("gradient_clip_norm", 1.0)
@@ -498,7 +500,7 @@ def run_experiment(
             ),
         )
 
-        validation_score = validation_auprc(
+        validation_score = validation_average_precision(
             validation_scored
         )
         validation_threshold = find_threshold(
@@ -511,44 +513,47 @@ def run_experiment(
             validation_threshold,
         )
 
-        improved = (
-            epoch == 1
-            or validation_score > best_validation
-            or (
-                validation_score == best_validation
-                and validation_scored["loss"]
-                < best_validation_loss
-            )
+        (
+            replace_checkpoint,
+            reset_patience,
+        ) = graphids_checkpoint_decision(
+            epoch=epoch,
+            validation_score=validation_score,
+            best_validation=best_validation,
+            validation_loss=validation_scored["loss"],
+            best_validation_loss=best_validation_loss,
         )
 
         record = {
             "epoch": epoch,
             "train_loss": train_loss,
             "validation_loss": validation_scored["loss"],
-            "validation_auprc": validation_score,
+            "validation_average_precision": validation_score,
             "validation_threshold": validation_threshold,
             "validation_f1": validation_f1,
             "elapsed_seconds": time.time() - epoch_start,
         }
         history.append(record)
 
-        if improved:
+        if replace_checkpoint:
             best_validation = validation_score
             best_epoch = epoch
             best_threshold = validation_threshold
             best_validation_loss = validation_scored["loss"]
-            wait = 0
 
             torch.save(
                 {
                     "encoder": encoder.state_dict(),
                     "transformer": transformer.state_dict(),
                     "epoch": epoch,
-                    "validation_auprc": validation_score,
+                    "validation_average_precision": validation_score,
                     "validation_threshold": validation_threshold,
                 },
                 temporary / "best_model.pt",
             )
+
+        if reset_patience:
+            wait = 0
         else:
             wait += 1
 
@@ -556,8 +561,8 @@ def run_experiment(
             "status": "epoch_completed",
             "epoch": epoch,
             "best_epoch": best_epoch,
-            "validation_auprc": validation_score,
-            "best_validation_auprc": best_validation,
+            "validation_average_precision": validation_score,
+            "best_validation_average_precision": best_validation,
             "elapsed_seconds": time.time() - started,
         }), flush=True)
 

@@ -239,7 +239,41 @@ def score_graphids_loader(
     }
 
 
-def validation_auprc(scored):
+
+def graphids_early_stopping_patience(training, default=20):
+    return int(
+        training.get(
+            "early_stopping_patience",
+            training.get("patience", default),
+        )
+    )
+
+
+def graphids_checkpoint_decision(
+    *,
+    epoch,
+    validation_score,
+    best_validation,
+    validation_loss,
+    best_validation_loss,
+):
+    primary_improved = (
+        epoch == 1
+        or validation_score > best_validation
+    )
+
+    tie_replacement = (
+        epoch != 1
+        and validation_score == best_validation
+        and validation_loss < best_validation_loss
+    )
+
+    return (
+        primary_improved or tie_replacement,
+        primary_improved,
+    )
+
+def validation_average_precision(scored):
     return float(
         average_precision_score(
             scored["targets"],
