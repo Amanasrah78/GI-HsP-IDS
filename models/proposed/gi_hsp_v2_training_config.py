@@ -20,6 +20,15 @@ SELECTION_METRICS = {
 }
 
 
+
+HORIZON_SEQUENCE_LENGTHS = {1, 2, 4, 6, 8, 10}
+HORIZON_ARCHITECTURES = {
+    "flow_only",
+    "topology_only",
+    "gi_hsp",
+}
+
+
 def positive_integer(value, name):
     try:
         value = int(value)
@@ -83,6 +92,7 @@ def load_training_config(path):
         "structure_only_graph_ablation": "identity",
         "flow_structure_only_graph_ablation": "identity",
         "fusion_concat_control": "identity",
+        "horizon_ablation": "identity",
     }
     expected_attribute_modes = {
         role: "full"
@@ -149,6 +159,15 @@ def load_training_config(path):
             f"{expected_architecture} architecture"
         )
 
+    if (
+        experiment_role == "horizon_ablation"
+        and architecture not in HORIZON_ARCHITECTURES
+    ):
+        raise ValueError(
+            "horizon_ablation requires one of "
+            f"{sorted(HORIZON_ARCHITECTURES)} architectures"
+        )
+
     data["batch_size"] = positive_integer(
         data["batch_size"],
         "batch_size",
@@ -165,11 +184,21 @@ def load_training_config(path):
             "normalization artifact template must contain {fold}"
         )
 
-    if positive_integer(
+    sequence_length = positive_integer(
         model["sequence_length"],
         "sequence_length",
-    ) != 10:
-        raise ValueError("The methodology requires ten temporal steps")
+    )
+
+    if experiment_role == "horizon_ablation":
+        if sequence_length not in HORIZON_SEQUENCE_LENGTHS:
+            raise ValueError(
+                "horizon_ablation sequence_length must be one of "
+                f"{sorted(HORIZON_SEQUENCE_LENGTHS)}"
+            )
+    elif sequence_length != 10:
+        raise ValueError(
+            "The methodology requires ten temporal steps"
+        )
 
     if int(model["num_classes"]) != 2:
         raise ValueError("The label contract requires two classes")

@@ -1,0 +1,91 @@
+schema_version: 1
+protocol_id: gi_hsp_v2_horizon_ablation_seeds_5_14
+status: frozen_before_training
+
+study_name: observation_horizon_analysis
+
+interpretation: >
+  Common-support observation-horizon analysis. This experiment
+  evaluates classification performance as the available temporal
+  observation increases. It must not be interpreted as direct
+  measurement of attack-detection delay.
+
+horizon_index_manifest:
+  path: datasets/processed/gi_hsp_v2/horizon_ablation/manifest.json
+  expected_source_window_count: 133657
+  expected_excluded_source_window_count: 25
+  expected_retained_source_window_count: 133632
+  expected_retained_source_window_ids_sha256: 38a3de5a111a567360e059e0a1dfbad64a21a619bc001541343af03264986011
+
+horizons:
+  - sequence_length: 1
+    observation_seconds: 5
+  - sequence_length: 2
+    observation_seconds: 10
+  - sequence_length: 4
+    observation_seconds: 20
+  - sequence_length: 6
+    observation_seconds: 30
+  - sequence_length: 8
+    observation_seconds: 40
+  - sequence_length: 10
+    observation_seconds: 50
+
+conditions:
+  flow_transformer:
+    architecture: flow_only
+    config_pattern: configs/gi_hsp_v2_horizon_h{sequence_length:02d}_flow_transformer.yaml
+
+  topology_only:
+    architecture: topology_only
+    config_pattern: configs/gi_hsp_v2_horizon_h{sequence_length:02d}_topology_only.yaml
+
+  fused_identity:
+    architecture: gi_hsp
+    config_pattern: configs/gi_hsp_v2_horizon_h{sequence_length:02d}_fused_identity.yaml
+
+graph_view: identity
+graph_attribute_mode: full
+bin_seconds: 5
+
+normalization_policy: >
+  Reuse the frozen fold-specific identity-view 5-second
+  normalization artifacts. Do not refit normalization by horizon.
+
+folds:
+  - 1
+  - 2
+  - 3
+  - 4
+
+seeds:
+  - 5
+  - 6
+  - 7
+  - 8
+  - 9
+  - 10
+  - 11
+  - 12
+  - 13
+  - 14
+
+expected_run_count: 720
+
+primary_metrics:
+  - balanced_accuracy
+  - mcc
+
+secondary_metrics:
+  - auprc
+  - auroc
+  - precision
+  - recall
+  - specificity
+
+statistical_unit: training_seed
+
+aggregation: >
+  For each seed, macro-average the four held-out-attack folds.
+  Report the across-seed mean and 95 percent Student-t confidence
+  interval.

@@ -1,0 +1,116 @@
+schema_version: 1
+protocol_id: gi_hsp_v2_horizon_ablation_seeds_5_14
+design_status: targeted_secondary_ablation
+
+objective: >
+  Quantify how GI-HSP detection performance changes as the available
+  observation horizon increases while holding the evaluated observation
+  population fixed.
+
+interpretation: >
+  Common-support observation-horizon ablation. This protocol does not
+  measure true attack-detection delay and must not be described as an
+  early-detection experiment.
+
+source:
+  sequence_index: datasets/processed/gi_hsp_v2/mqttset_sequence_index_5s.sqlite
+  canonical_store: datasets/processed/gi_hsp_v2/mqttset_canonical.sqlite
+
+  expected_source_window_count: 133657
+  expected_capture_partition_rows: 48
+  expected_source_window_length_seconds: 50
+
+  expected_bin_seconds: 5
+  expected_sequence_length: 10
+  expected_training_stride_seconds: 5
+  expected_evaluation_stride_seconds: 50
+
+common_support:
+  rule: first_prefix_contains_observed_microflow
+  prefix_seconds: 5
+
+  expected_excluded_windows: 25
+  expected_retained_windows: 133632
+
+  expected_excluded_by_binary_label:
+    "1": 25
+
+  expected_excluded_by_source_label:
+    bruteforce: 2
+    malformed: 23
+
+  expected_zero_activity_prefixes:
+    "5": 25
+    "10": 11
+    "20": 5
+    "30": 3
+    "40": 1
+    "50": 0
+
+horizons:
+  - sequence_length: 1
+    observation_seconds: 5
+  - sequence_length: 2
+    observation_seconds: 10
+  - sequence_length: 4
+    observation_seconds: 20
+  - sequence_length: 6
+    observation_seconds: 30
+  - sequence_length: 8
+    observation_seconds: 40
+  - sequence_length: 10
+    observation_seconds: 50
+
+folds: [1, 2, 3, 4]
+seeds: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+
+conditions:
+  flow_transformer:
+    base_config: configs/gi_hsp_v2_training_flow_only.yaml
+    architecture: flow_only
+
+  topology_only:
+    base_config: configs/gi_hsp_v2_training_topology_only.yaml
+    architecture: topology_only
+
+  fused_identity:
+    base_config: configs/gi_hsp_v2_training.yaml
+    architecture: gi_hsp
+
+primary_metrics:
+  - balanced_accuracy
+  - mcc
+
+secondary_metrics:
+  - auprc
+  - auroc
+  - precision
+  - recall
+  - specificity
+
+inference:
+  independent_unit: training_seed
+  fold_aggregation: macro_mean_within_seed
+  confidence_interval: student_t_95_percent
+
+frozen_contract:
+  common_support_population: true
+  source_window_start_positions: true
+  capture_partitions: true
+  labels: true
+  bin_seconds: true
+  training_stride_seconds: true
+  evaluation_stride_seconds: true
+  normalization_artifacts: true
+  optimizer: true
+  sampler: true
+  model_dimensions: true
+  threshold: true
+  graph_view: true
+  graph_attribute_mode: true
+  training_protocol: true
+
+output:
+  directory: datasets/processed/gi_hsp_v2/horizon_ablation
+  filename_template: mqttset_horizon_h{sequence_length:02d}_5s.sqlite
+  manifest: datasets/processed/gi_hsp_v2/horizon_ablation/manifest.json
