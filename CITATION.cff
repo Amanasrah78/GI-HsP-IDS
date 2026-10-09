@@ -1,0 +1,15 @@
+```yaml
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+
+authors:
+  - family-names: "Manasrah"
+    given-names: "Ahmed Mansour"
+
+title: "GI-HSP: GI-HSP reproducibility release v1.2.0"
+version: "1.2.0"
+date-released: 2026-10-09
+
+doi: "10.5281/zenodo.23261916"
+repository-code: "https://github.com/Amanasrah78/GI-HsP-IDS"
+```
